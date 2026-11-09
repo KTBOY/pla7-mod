@@ -54,7 +54,6 @@
         <div class="toolbar-actions">
           <button class="btn btn-gold" @click="launch(tab)">▶ 启动游戏</button>
           <button class="btn" @click="importFolder()">导入 MOD</button>
-          <button class="btn" @click="openPath(cfg.libraryDir)">打开 MOD 库</button>
           <button class="btn" @click="openPath(cfg.games[tab].paksDir)">打开游戏目录</button>
           <button class="btn" @click="refresh()" :disabled="loading">{{ loading ? '扫描中…' : '刷新' }}</button>
         </div>
