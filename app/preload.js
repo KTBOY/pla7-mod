@@ -1,0 +1,23 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('api', {
+  getConfig: () => ipcRenderer.invoke('get-config'),
+  saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
+  scan: () => ipcRenderer.invoke('scan'),
+  install: (payload) => ipcRenderer.invoke('install', payload),
+  uninstall: (payload) => ipcRenderer.invoke('uninstall', payload),
+  deleteMod: (payload) => ipcRenderer.invoke('delete-mod', payload),
+  setPreview: (payload) => ipcRenderer.invoke('set-preview', payload),
+  resign: (payload) => ipcRenderer.invoke('resign', payload),
+  detectRoot: (pickedDir) => ipcRenderer.invoke('detect-root', pickedDir),
+  pickRoot: () => ipcRenderer.invoke('pick-root'),
+  importMods: () => ipcRenderer.invoke('import-mods'),
+  importFolder: () => ipcRenderer.invoke('import-folder'),
+  launchGame: (payload) => ipcRenderer.invoke('launch-game', payload),
+  openPath: (p) => ipcRenderer.invoke('open-path', p),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  getExtras: () => ipcRenderer.invoke('get-extras'),
+  readImage: (p) => ipcRenderer.invoke('read-image', p),
+  winMin: () => ipcRenderer.send('win-min'),
+  winClose: () => ipcRenderer.send('win-close'),
+});

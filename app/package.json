@@ -1,0 +1,8 @@
+{
+  "name": "pal7-mod-manager",
+  "version": "1.2.0",
+  "description": "仙剑奇侠传七 MOD 阁 - MOD 管理器",
+  "main": "main.js",
+  "type": "commonjs",
+  "author": "Pal7 MOD 阁"
+}

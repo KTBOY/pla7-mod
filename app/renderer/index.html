@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; img-src 'self' data:; style-src 'self' 'unsafe-inline'" />
+<title>仙剑七 · MOD 阁</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app" v-cloak @contextmenu.prevent>
+
+  <!-- 标题栏 -->
+  <header class="titlebar">
+    <div class="titlebar-brand">
+      <span class="brand-seal">仙</span>
+      <span class="brand-text">仙剑奇侠传七 · MOD 阁</span>
+    </div>
+    <div class="titlebar-btns">
+      <button class="tb-btn" @click="winMin">─</button>
+      <button class="tb-btn tb-close" @click="winClose">✕</button>
+    </div>
+  </header>
+
+      <div class="layout" v-if="cfg">
+        <!-- 侧栏 -->
+        <aside class="sidebar">
+      <nav class="nav">
+        <button v-for="key in gameKeys" :key="key"
+                class="nav-item" :class="{active: tab===key}"
+                @click="tab = key">
+          <span class="nav-glyph">{{ tabGlyph(key) }}</span>
+          <span>{{ cfg.games[key].name }}</span>
+          <em class="nav-badge" v-if="scanData">{{ countInstalled(key) }}</em>
+        </button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" :class="{active: tab==='settings'}" @click="tab='settings'">
+          <span class="nav-glyph">⚙</span><span>设置</span>
+        </button>
+        <button class="nav-item" @click="openUpdate()">
+          <span class="nav-glyph">☁</span><span>更新</span>
+        </button>
+      </nav>
+      <div class="sidebar-foot">
+        <button class="btn btn-sm donate-entry" @click="openDonate()">♥ 打赏</button>
+        <div class="foot-slogan">剑起云海 · 随心换装</div>
+      </div>
+    </aside>
+
+    <!-- 主区 -->
+    <main class="main">
+      <!-- 顶栏 -->
+      <div class="toolbar" v-if="tab !== 'settings'">
+        <h1 class="page-title">{{ cfg.games[tab].name }}</h1>
+        <div class="toolbar-actions">
+          <button class="btn btn-gold" @click="launch(tab)">▶ 启动游戏</button>
+          <button class="btn" @click="importFolder()">导入 MOD</button>
+          <button class="btn" @click="openPath(cfg.libraryDir)">打开 MOD 库</button>
+          <button class="btn" @click="openPath(cfg.games[tab].paksDir)">打开游戏目录</button>
+          <button class="btn" @click="refresh()" :disabled="loading">{{ loading ? '扫描中…' : '刷新' }}</button>
+        </div>
+      </div>
+
+      <!-- MOD 管理 -->
+      <div class="scroll" v-if="tab !== 'settings' && scanData && cfg">
+        <p class="dir-warn" v-if="!scanData.games[tab].dirExists">
+          ⚠ 未找到该游戏目录：{{ scanData.games[tab].paksDir }}，请到「设置」中修正路径。
+        </p>
+        <p class="dir-tip">
+          MOD 库在软件目录的「皮肤」文件夹，把下载的 MOD（.pak，附同名 .sig / 预览图更佳）丢进去后点「刷新」；
+          或点「导入 MOD」选择下载好的文件夹批量入库（按内容自动去重、自动补预览图）。
+          <b>不同槽位的 MOD 可同时生效</b>（如角色服装 + 武器外观）；启用同槽位 MOD（同一角色换装）会自动替换旧的。
+        </p>
+
+        <section class="section">
+          <h2 class="section-title"><span class="dot dot-jade"></span>当前生效 <small>可多开 · 同槽位自动替换</small>
+            <button class="btn btn-sm" v-if="scanData.games[tab].installed.length" @click="uninstallAll(tab)">全部停用</button>
+          </h2>
+          <div class="grid" v-if="scanData.games[tab].installed.length">
+            <mod-card v-for="m in scanData.games[tab].installed" :key="m.id"
+              :mod="m" installed
+              @uninstall="uninstall(m); closeZoom()" @del="del(m); closeZoom()" @preview="setPreview(m); closeZoom()" @zoom="openZoom(m)" />
+          </div>
+          <p class="empty" v-else>当前没有生效的 MOD —— 从下方 MOD 库中点「启用」。</p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title"><span class="dot dot-gold"></span>MOD 库 <small>共 {{ scanData.games[tab].library.length }} 个</small></h2>
+          <div class="filter-tabs">
+            <button v-for="c in ['全部','服装','武器']" :key="c"
+              class="ftab" :class="{active: filter===c}" @click="filter=c">{{ c }}</button>
+          </div>
+          <div class="grid" v-if="filteredLibrary(tab).length">
+            <mod-card v-for="m in filteredLibrary(tab)" :key="m.id"
+              :mod="m"
+              @install="install(m, tab); closeZoom()" @del="del(m); closeZoom()" @preview="setPreview(m); closeZoom()" @zoom="openZoom(m)" />
+          </div>
+          <p class="empty" v-else>这个分类下没有 MOD。</p>
+        </section>
+      </div>
+
+      <!-- 设置 -->
+      <div class="scroll" v-if="tab === 'settings'">
+        <section class="section settings">
+          <h2 class="section-title"><span class="dot dot-jade"></span>路径设置</h2>
+          <div class="dir-tip">
+            一般无需手动填写：软件会自动查找游戏（优先从软件所在位置向上找，其次扫描常见安装位置）。
+            检测不到时，点「选择游戏根目录」选中<b>包含 Pal7 文件夹的那一层</b>即可自动填好全部路径。
+          </div>
+          <div class="toolbar-actions" style="margin-bottom:16px">
+            <button class="btn btn-gold" @click="autoDetect()">🔍 自动检测游戏</button>
+            <button class="btn" @click="pickRoot()">📁 选择游戏根目录…</button>
+          </div>
+          <label class="field" v-for="key in gameKeys" :key="key">
+            <span>{{ cfg.games[key].name }} Paks 目录</span>
+            <input v-model="cfg.games[key].paksDir" spellcheck="false" />
+          </label>
+          <label class="field" v-for="key in gameKeys" :key="key + '-exe'">
+            <span>{{ cfg.games[key].name }} 启动程序 (.exe)</span>
+            <input v-model="cfg.games[key].exe" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span>MOD 库目录</span>
+            <input v-model="cfg.libraryDir" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span>更新链接（夸克网盘，可选）</span>
+            <input v-model="cfg.updateUrl" placeholder="https://pan.quark.cn/s/…" spellcheck="false" />
+          </label>
+          <div class="toolbar-actions" style="margin-top:8px">
+            <button class="btn btn-gold" @click="saveSettings">保存设置</button>
+            <button class="btn" @click="tab='main'">返回</button>
+          </div>
+          <p class="hint">提示：MOD 库默认在软件目录的「皮肤」文件夹，把 MOD 放进去后刷新即可。启用 MOD 会把 .pak 和 .sig 一起复制到游戏的 <b>~mods</b> 文件夹，缺 .sig 时自动用游戏自带签名补一个；停用则移回 MOD 库。<b>不同槽位的 MOD 可同时生效</b>（角色服装 + 武器外观等）；启用同槽位 MOD（同一角色换装）会自动停用旧的。换 MOD 后需重启游戏生效。</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- 大图预览 -->
+  <div class="lightbox" v-if="zoomMod" @click.self="closeZoom()">
+    <div class="lb-toolbar">
+      <button class="obtn" v-if="scanData && scanData.games[tab].installed.some(m => m.hash === zoomMod.hash)"
+              @click="uninstall(zoomMod); closeZoom()">停用</button>
+      <button class="obtn obtn-gold" v-else @click="install(zoomMod, tab); closeZoom()">启用</button>
+      <button class="obtn obtn-danger" @click="del(zoomMod); closeZoom()">删除</button>
+      <button class="obtn" @click="setPreview(zoomMod); closeZoom()">设预览图</button>
+      <button class="obtn" title="用游戏自带签名重签（mod 拒载/不生效时用）" @click="resign(zoomMod)">重签</button>
+      <button class="obtn" @click="closeZoom()">✕ 关闭</button>
+    </div>
+    <img class="lb-img" v-if="zoomUrl" :src="zoomUrl" @click="closeZoom()" />
+    <div class="lb-ph" v-else>该 MOD 没有预览图</div>
+    <div class="lb-caption">{{ zoomMod.name }} · {{ zoomMod.category }}{{ zoomMod.role ? ' · ' + zoomMod.role : '' }} · {{ zoomMod.sizeMB }} MB</div>
+  </div>
+
+  <!-- 更新弹窗 -->
+  <div class="modal-mask" v-if="updateOpen" @click.self="updateOpen=false">
+    <div class="modal-panel">
+      <h3 class="modal-title">检查更新</h3>
+      <p class="modal-line">当前版本：v{{ extras.version }}</p>
+      <template v-if="extras.updateUrl">
+        <p class="modal-line">新版本与 MOD 整合包发布在夸克网盘：</p>
+        <div class="modal-actions"><button class="btn btn-gold" @click="openUpdateUrl()">☁ 打开夸克网盘</button></div>
+      </template>
+      <p class="modal-hint" v-else>更新链接待配置：请到「设置」中把夸克网盘地址粘贴到「更新链接」。</p>
+      <div class="modal-actions"><button class="btn" @click="updateOpen=false">关闭</button></div>
+    </div>
+  </div>
+
+  <!-- 打赏弹窗 -->
+  <div class="modal-mask" v-if="donateOpen" @click.self="donateOpen=false">
+    <div class="modal-panel">
+      <h3 class="modal-title">打赏支持</h3>
+      <div class="donate-qr-frame" :class="{empty: !extras.donateQr}">
+        <img v-if="extras.donateQr" :src="extras.donateQr" alt="打赏二维码" />
+      </div>
+      <p class="modal-hint" v-if="!extras.donateQr">二维码待放置：把图片存为 renderer/assets/donate-qr.png 后重新打开本窗口即可。</p>
+      <p class="modal-line donate-thanks" v-else>扫码请作者喝杯茶，感谢支持！</p>
+      <div class="modal-actions"><button class="btn" @click="donateOpen=false">关闭</button></div>
+    </div>
+  </div>
+
+  <!-- Toast -->  <transition name="toast">
+    <div class="toast" :class="toast.type" v-if="toast.show">{{ toast.text }}</div>
+  </transition>
+</div>
+
+<script src="vendor/vue.global.prod.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

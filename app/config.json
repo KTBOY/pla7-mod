@@ -1,0 +1,16 @@
+{
+  "games": {
+    "main": {
+      "name": "仙剑奇侠传七（主游戏）",
+      "paksDir": "F:\\SwanFa7 V2.1.0\\仙剑奇侠传七\\Pal7\\Content\\Paks",
+      "exe": "F:\\SwanFa7 V2.1.0\\仙剑奇侠传七\\Pal7.exe"
+    },
+    "dlc": {
+      "name": "仙剑奇侠传七 DLC",
+      "paksDir": "F:\\SwanFa7 V2.1.0\\仙剑奇侠传七\\Pal7_DLC\\Pal7\\Content\\Paks",
+      "exe": "F:\\SwanFa7 V2.1.0\\仙剑奇侠传七\\Pal7_DLC\\Pal7.exe"
+    }
+  },
+  "libraryDir": "F:\\SwanFa7 V2.1.0\\仙剑奇侠传七\\工具\\pal7-mod-manager\\resources\\app\\皮肤",
+  "updateUrl": "https://pan.quark.cn/s/5918c74aa5ae"
+}
