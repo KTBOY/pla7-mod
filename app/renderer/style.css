@@ -237,7 +237,8 @@ body {
   font-size: 12.5px; letter-spacing: 1px;
   cursor: pointer;
   clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
-  transition: all .16s var(--ease);
+  transition: color .16s var(--ease), border-color .16s var(--ease), background .16s var(--ease),
+    transform .16s var(--ease), opacity .16s var(--ease), box-shadow .16s var(--ease), filter .16s var(--ease);
 }
 .btn svg { width: 14px; height: 14px; flex: none; }
 .btn:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201,172,103,.08); }
@@ -657,9 +658,10 @@ body {
 }
 .btn-gold:hover::after, .obtn-gold:hover::after { transform: translateX(130%); transition: transform .5s var(--ease); }
 
-/* 刷新扫描：图标旋转 */
+/* 刷新扫描：文案恒宽、不切 disabled，金色描边 + 图标原地旋转，布局零抖动 */
+.btn.is-loading { border-color: var(--gold-dim); color: var(--gold-bright); cursor: progress; }
 @keyframes hud-rot { to { transform: rotate(360deg); } }
-.btn svg.spin { animation: hud-rot .9s linear infinite; }
+.btn svg.spin { animation: hud-rot .9s linear infinite; transform-origin: 50% 50%; }
 
 /* 卡片入场：按索引错峰上浮，切换页签/筛选时成组浮现 */
 @keyframes card-in { from { opacity: 0; transform: translateY(10px); } }

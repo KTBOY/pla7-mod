@@ -1051,8 +1051,11 @@ function createWindow() {
         // 微交互实测：真实鼠标事件触发 :hover/:active（按压选「放大」——只读，不碰库）
         const htmlSrc = fs.readFileSync(path.join(__dirname, 'renderer', 'index.html'), 'utf8');
         const cssSrc = fs.readFileSync(path.join(__dirname, 'renderer', 'style.css'), 'utf8');
-        const wiringOk = htmlSrc.includes(':class="{spin: loading}"') && htmlSrc.includes('<transition name="modal">') &&
-          htmlSrc.includes('<transition name="lb">') && cssSrc.includes('@keyframes hud-rot') && cssSrc.includes('.modal-enter-from .modal-panel');
+        const appSrc = fs.readFileSync(path.join(__dirname, 'renderer', 'app.js'), 'utf8');
+        const wiringOk = htmlSrc.includes(':class="{spin: loading}"') && htmlSrc.includes("'is-loading': loading") &&
+          htmlSrc.includes('<transition name="modal">') && htmlSrc.includes('<transition name="lb">') &&
+          cssSrc.includes('@keyframes hud-rot') && cssSrc.includes('.btn.is-loading') && cssSrc.includes('.modal-enter-from .modal-panel') &&
+          appSrc.includes('if (loading.value) { refreshQueued = true; return; }');
         const goldRect = await js('(()=>{const g=document.querySelectorAll(".grid")[1]; const b=g&&g.querySelector(".obtn-gold"); if(!b) return null; b.scrollIntoView({block:"center"}); const r=b.getBoundingClientRect(); return {x:r.x+r.width/2, y:r.y+r.height/2};})()');
         let hoverShot = false;
         if (goldRect) {
@@ -1077,9 +1080,41 @@ function createWindow() {
           await new Promise((r) => setTimeout(r, 300));
           ew.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 5 });
         }
-        const spinTry = await js('(()=>{const b=[...document.querySelectorAll(".toolbar-actions .btn")].find(x=>x.textContent.includes("刷新")); b.click(); return new Promise(res=>setTimeout(()=>res(b.querySelector("svg").classList.contains("spin")),30));})()');
+        // 刷新按钮零抖动实测：恒宽文案、不切 disabled，按压全周期几何漂移=0（扫描只读，不碰库）
+        const rSel = '[...document.querySelectorAll(".toolbar-actions .btn")].find(x=>x.textContent.includes("刷新"))';
+        const rGet = '(()=>{const b=' + rSel + '; const r=b.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height,label:b.textContent.trim(),disabled:b.disabled,loading:b.classList.contains("is-loading"),spin:!!b.querySelector("svg.spin")};})()';
+        const r0 = await js(rGet);
+        const rc = { x: r0.x + r0.w / 2, y: r0.y + r0.h / 2 };
+        ew.webContents.sendInputEvent({ type: 'mouseMove', x: rc.x, y: rc.y });
+        await new Promise((r) => setTimeout(r, 200));
+        ew.webContents.sendInputEvent({ type: 'mouseDown', x: rc.x, y: rc.y, button: 'left', clickCount: 1 });
+        await new Promise((r) => setTimeout(r, 90));
+        const rPress = await js(rGet);
+        await shot('pm7-extras-refresh-press.png');
+        ew.webContents.sendInputEvent({ type: 'mouseUp', x: rc.x, y: rc.y, button: 'left', clickCount: 1 });
+        let spinSeen = false;
+        for (let i = 0; i < 50 && !spinSeen; i++) {
+          const s = await js(rGet);
+          if (s.spin && s.loading) { spinSeen = true; await shot('pm7-extras-refresh.png'); }
+          else await new Promise((r) => setTimeout(r, 4));
+        }
+        // 快速连点：重入守卫应吞掉重复扫描，状态干净收敛
+        ew.webContents.sendInputEvent({ type: 'mouseDown', x: rc.x, y: rc.y, button: 'left', clickCount: 1 });
+        ew.webContents.sendInputEvent({ type: 'mouseUp', x: rc.x, y: rc.y, button: 'left', clickCount: 1 });
+        ew.webContents.sendInputEvent({ type: 'mouseDown', x: rc.x, y: rc.y, button: 'left', clickCount: 2 });
+        ew.webContents.sendInputEvent({ type: 'mouseUp', x: rc.x, y: rc.y, button: 'left', clickCount: 2 });
+        await new Promise((r) => setTimeout(r, 450));
+        ew.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 5 });
+        await new Promise((r) => setTimeout(r, 220));
+        const rEnd = await js(rGet);
+        const sameRect = (a, b) => Math.abs(a.x - b.x) < .5 && Math.abs(a.y - b.y) < .5 && Math.abs(a.w - b.w) < .5 && Math.abs(a.h - b.h) < .5;
+        const refreshStable = sameRect(r0, rEnd) &&
+          Math.abs(rPress.w - r0.w * .97) < 1.5 && Math.abs(rPress.h - r0.h * .97) < 1.5 &&
+          r0.label === '刷新' && rPress.label === '刷新' && rEnd.label === '刷新' &&
+          !rPress.disabled && !rEnd.disabled && !rEnd.loading;
         const hasLib = await js('!!document.querySelectorAll(".grid")[1]');
-        log('微交互接线=' + wiringOk + ' 有库=' + hasLib + ' hover截图=' + hoverShot + ' 按压截图=' + pressShot + ' 大图入场截图=' + lbEnter + ' 刷新旋转捕捉=' + spinTry);
+        log('微交互接线=' + wiringOk + ' 有库=' + hasLib + ' hover截图=' + hoverShot + ' 按压截图=' + pressShot + ' 大图入场截图=' + lbEnter);
+        log('刷新零抖动=' + refreshStable + ' 旋转捕捉=' + spinSeen + ' 几何=' + JSON.stringify({ idle: r0, press: rPress, end: rEnd }));
         await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('设置')).click();})()");
         await new Promise((r) => setTimeout(r, 500));
         const urlHidden = await js('![...document.querySelectorAll(".field input")].some(x=>(x.placeholder||"").includes("pan.quark.cn")) && ' +
@@ -1103,7 +1138,7 @@ function createWindow() {
         console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
           authorPos && authorOpen.ok === true &&
           openGuard.ok === false && openEmpty.ok === false &&
-          wiringOk && pageErr === 0 && (!hasLib || (hoverShot && pressShot && lbEnter)) && restartHint &&
+          wiringOk && pageErr === 0 && refreshStable && (!hasLib || (hoverShot && pressShot && lbEnter)) && restartHint &&
           (linkOpen === null || linkOpen.ok === true) &&
           stats.total === stats.uniq && stats.imgs === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }

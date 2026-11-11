@@ -93,7 +93,9 @@ const app = createApp({
       return scanData.value ? scanData.value.games[k].installed.length : 0;
     }
 
+    let refreshQueued = false;
     async function refresh() {
+      if (loading.value) { refreshQueued = true; return; }
       loading.value = true;
       try {
         scanData.value = await window.api.scan();
@@ -101,6 +103,7 @@ const app = createApp({
         showToast('扫描失败：' + e.message, 'error');
       } finally {
         loading.value = false;
+        if (refreshQueued) { refreshQueued = false; refresh(); }
       }
     }
 

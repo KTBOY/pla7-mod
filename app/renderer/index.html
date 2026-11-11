@@ -100,9 +100,9 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2Z"/></svg>
             打开游戏目录
           </button>
-          <button class="btn" @click="refresh()" :disabled="loading">
+          <button class="btn" :class="{ 'is-loading': loading }" :aria-busy="loading" @click="refresh()">
             <svg :class="{spin: loading}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            {{ loading ? '扫描中…' : '刷新' }}
+            刷新
           </button>
         </div>
       </div>
