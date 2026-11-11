@@ -27,16 +27,6 @@ const ModCard = defineComponent({
       <div class="preview" @click="$emit('zoom')" title="点击查看大图">
         <img v-if="previewUrl" :src="previewUrl" />
         <span v-else class="ph">无图<i>NO PREVIEW</i></span>
-        <span v-if="installed" class="badge-installed"><s></s>生效中</span>
-        <!-- 悬浮按钮：半透明，悬停卡片时变清晰 -->
-        <div class="overlay" @click.stop>
-          <button class="obtn" v-if="installed" @click="$emit('uninstall')">停用</button>
-          <button class="obtn obtn-gold" v-else @click="$emit('install')">启用</button>
-          <button class="obtn obtn-danger" @click="$emit('del')">删除</button>
-          <button class="obtn" title="设为预览图" @click="$emit('preview')">设图</button>
-          <button class="obtn" title="查看大图" @click="$emit('zoom')">放大</button>
-        </div>
-        <div class="zoom-hint" v-if="previewUrl">点击放大</div>
       </div>
       <div class="body">
         <div class="name" :title="mod.name">{{ mod.name }}</div>
@@ -45,7 +35,14 @@ const ModCard = defineComponent({
           <em class="tag" v-if="mod.role">{{ mod.role }}</em>
           <em class="tag tag-warn" v-if="!mod.sigPath" title="启用时会用游戏自带签名自动补一个">无签名</em>
         </div>
-        <div class="meta"><i></i>{{ mod.sizeMB }} MB</div>
+        <div class="actions">
+          <button class="obtn" v-if="installed" @click="$emit('uninstall')">停用</button>
+          <button class="obtn obtn-gold" v-else @click="$emit('install')">启用</button>
+          <button class="obtn obtn-danger" @click="$emit('del')">删除</button>
+          <button class="obtn" title="设为预览图" @click="$emit('preview')">设图</button>
+          <button class="obtn" title="查看大图" @click="$emit('zoom')">放大</button>
+        </div>
+        <div class="meta"><i></i>{{ mod.sizeMB }} MB<span v-if="installed" class="badge-installed"><s></s>生效中</span></div>
       </div>
     </div>
   `,

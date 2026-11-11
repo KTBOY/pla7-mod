@@ -1009,6 +1009,9 @@ function createWindow() {
           'const names=cards.map(c=>c.querySelector(".name").textContent.trim());' +
           'return {total:cards.length, uniq:new Set(names).size, imgs:cards.filter(c=>c.querySelector(".preview img")).length};})()');
         log('MOD库 卡片=' + stats.total + ' 去重后=' + stats.uniq + ' 有预览图=' + stats.imgs);
+        await js("(()=>{const s=document.querySelector('.scroll'); s.scrollTop=s.scrollHeight;})()");
+        await new Promise((r) => setTimeout(r, 600));
+        await shot('pm7-extras-grid.png');
 
         console.log(updOpen && updState && donateOk && importBtn && urlField && bad.ok === false &&
           (linkOpen === null || linkOpen.ok === true) &&
