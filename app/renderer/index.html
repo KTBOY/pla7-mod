@@ -117,7 +117,7 @@
           <div class="tip-head"><span class="mk"></span><span class="zh">指引</span><span class="en">GUIDE</span></div>
           MOD 库在软件目录的「皮肤」文件夹，把下载的 MOD（.pak，附同名 .sig / 预览图更佳）丢进去后点「刷新」；
           或点「导入 MOD」选择下载好的文件夹批量入库（按内容自动去重、自动补预览图）。
-          <b>不同槽位的 MOD 可同时生效</b>（如角色服装 + 武器外观）；启用同槽位 MOD（同一角色换装）会自动替换旧的。
+          <b>不同槽位的 MOD 可同时生效</b>（如角色服装 + 武器外观）；启用同槽位 MOD（同一角色换装）会自动替换旧的。女1/女2/男1/男2 与拼音名（yqs 等）自动归入对应角色槽位（女1=月清疏、女2=白茉晴、男1=修吾、男2=桑游）。
         </div>
 
         <section class="section">
@@ -195,7 +195,7 @@
               <span>MOD 库目录</span>
               <input v-model="cfg.libraryDir" spellcheck="false" />
             </label>
-            <p class="hint">提示：MOD 库默认在软件目录的「皮肤」文件夹，把 MOD 放进去后刷新即可。启用 MOD 会把 .pak 和 .sig 一起复制到游戏的 <b>~mods</b> 文件夹，缺 .sig 时自动用游戏自带签名补一个；停用则移回 MOD 库。<b>不同槽位的 MOD 可同时生效</b>（角色服装 + 武器外观等）；启用同槽位 MOD（同一角色换装）会自动停用旧的。换 MOD 后需重启游戏生效。</p>
+            <p class="hint">提示：MOD 库默认在软件目录的「皮肤」文件夹，把 MOD 放进去后刷新即可。启用 MOD 会把 .pak 和 .sig 一起复制到游戏的 <b>~mods</b> 文件夹，缺 .sig 时自动用游戏自带签名补一个；停用则移回 MOD 库。<b>不同槽位的 MOD 可同时生效</b>（角色服装 + 武器外观等）；启用同槽位 MOD（同一角色换装）会自动停用旧的；女1=月清疏、女2=白茉晴、男1=修吾、男2=桑游，拼音名同样归入对应角色。换 MOD 后需重启游戏生效。</p>
           </section>
 
           <section class="card set-card">

@@ -246,6 +246,25 @@ async function buildMod(dir, pakPath) {
   };
 }
 
+// 角色槽位归一：中文名、编号别名（女1=月清疏 等）、拼音都归到同一角色，
+// 避免同一位置的 MOD 因名字写法不同被判成不同槽而同时启用
+const CHAR_SLOTS = [
+  { canon: '月清疏', zh: /月清疏|女1/, py: /^(yqs|yueqingshu)/ },
+  { canon: '修吾', zh: /修吾|男1/, py: /^(xw$|xiuwu)/ },
+  { canon: '白茉晴', zh: /白茉晴|女2/, py: /^(bmq|baimoqing)/ },
+  { canon: '桑游', zh: /桑游|男2/, py: /^(sy$|sangyou)/ },
+  { canon: '魁予', zh: /魁予/, py: /^(ky$|kuiyu)/ },
+];
+function resolveRole(name, dirName) {
+  const hay = name + '_' + dirName;
+  const tokens = hay.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  for (const c of CHAR_SLOTS) {
+    if (c.zh.test(hay)) return c.canon;
+    if (tokens.some((t) => c.py.test(t))) return c.canon;
+  }
+  return '';
+}
+
 // 从文件名启发式分类，并计算"槽位"：同槽位的 mod 互相覆盖（如同一角色的两套服装），
 // 不同槽位可以同时启用（如 女1服装 + 碧海剑武器）
 function classify(name, dirName = '') {
@@ -255,10 +274,7 @@ function classify(name, dirName = '') {
   if (wIdx >= 0) {
     return { category: '武器', role: segs[wIdx + 1] || '', slot: '武器:' + (segs[wIdx + 1] || name) };
   }
-  let role = '';
-  // 文件名可能是拼音（如 yqs_lk_P），角色识别把所在文件夹名也纳入
-  const rm = (name + '_' + dirName).match(/(月清疏|白茉晴|修吾|桑游|魁予|男1|男2|女1|女2|月修吾)/);
-  if (rm) role = rm[1];
+  const role = resolveRole(name, dirName);
   return { category: '服装', role, slot: '服装:' + (role || name) };
 }
 
@@ -733,6 +749,22 @@ async function runDedupSelfTest() {
     const h1 = await hashPak(hp);
     fs.writeFileSync(hp, 'V2-longer');
     assert((await hashPak(hp)) !== h1, '哈希缓存随内容变化失效');
+
+    // 7) 槽位归一：女1≡月清疏≡拼音 同槽互斥；不同角色、武器与服装共存
+    const slotOf = (n, d) => classify(n, d || '').slot;
+    assert(slotOf('刀战学院_女1_服装1白色_人体美白.pak') === slotOf('月清疏_纱婉琅派_校服配色.pak'), '女1 与 月清疏 判同槽');
+    assert(slotOf('yqs_lk_P.pak') === slotOf('月清疏_mod_赵灵儿套.pak'), '拼音 yqs 归入月清疏槽');
+    assert(slotOf('YueQingShuJinQiu_P.pak') === slotOf('刀战学院_女1_服装1白色.pak'), '全拼归入月清疏槽');
+    assert(slotOf('刀战学院_女2_服装1白色.pak') === slotOf('白茉晴_云纹套.pak'), '女2 与 白茉晴 判同槽');
+    assert(slotOf('刀战学院_男2_服装1牛马_烟熏妆.pak') === slotOf('桑游_苗服.pak'), '男2 与 桑游 判同槽');
+    assert(slotOf('刀战学院_男1_服装1白色.pak') !== slotOf('刀战学院_女1_服装1白色.pak'), '男1 与 女1 不同槽');
+    assert(slotOf('刀战学院_武器_碧海剑_赤红.pak') !== slotOf('刀战学院_女1_服装1白色.pak'), '武器与服装不同槽');
+    w(path.join(modsDir, '刀战学院_女1_服装1白色.pak'), 'PAK-NV1');
+    let ds = await disableSameSlot(path.join(tmp, 'paks'), libDir, slotOf('月清疏_纱婉琅派.pak'));
+    assert(ds.disabled === 1, '启用月清疏自动停用女1（disabled=' + ds.disabled + '）');
+    w(path.join(modsDir, '刀战学院_男1_服装1白色.pak'), 'PAK-NAN1');
+    ds = await disableSameSlot(path.join(tmp, 'paks'), libDir, slotOf('月清疏_纱婉琅派.pak'));
+    assert(ds.disabled === 0, '月清疏与男1共存（disabled=' + ds.disabled + '）');
 
     log('ALL-OK');
   } finally {
