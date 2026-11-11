@@ -998,8 +998,9 @@ function createWindow() {
         const importBtn = await js("[...document.querySelectorAll('.toolbar-actions .btn')].some(x=>x.textContent.includes('导入 MOD'))");
         await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('设置')).click();})()");
         await new Promise((r) => setTimeout(r, 500));
-        const urlField = await js('!!([...document.querySelectorAll(".field input")].find(x=>(x.placeholder||"").includes("pan.quark.cn")))');
-        log('导入按钮=' + importBtn + ' 设置更新链接字段=' + urlField);
+        const urlHidden = await js('![...document.querySelectorAll(".field input")].some(x=>(x.placeholder||"").includes("pan.quark.cn")) && ' +
+          '!document.querySelector(".settings").textContent.includes("pan.quark.cn")');
+        log('导入按钮=' + importBtn + ' 设置夸克链接已隐藏=' + urlHidden);
         await shot('pm7-extras-settings.png');
 
         // 回 MOD 页统计卡片：去重后应无同名重复、预览图齐全
@@ -1013,7 +1014,7 @@ function createWindow() {
         await new Promise((r) => setTimeout(r, 600));
         await shot('pm7-extras-grid.png');
 
-        console.log(updOpen && updState && donateOk && importBtn && urlField && bad.ok === false &&
+        console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
           (linkOpen === null || linkOpen.ok === true) &&
           stats.total === stats.uniq && stats.imgs === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }

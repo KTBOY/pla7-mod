@@ -197,11 +197,7 @@
           <section class="card set-card">
             <i class="cn"></i><i class="cn"></i><i class="cn"></i><i class="cn"></i>
             <div class="card-head"><span class="mk"></span><span class="zh">更新与支持</span><span class="ln"></span><span class="en">UPDATE &amp; SUPPORT</span></div>
-            <label class="field">
-              <span>更新链接（夸克网盘，可选）</span>
-              <input v-model="cfg.updateUrl" placeholder="https://pan.quark.cn/s/…" spellcheck="false" />
-            </label>
-            <p class="hint">侧栏「更新」入口会读取这个链接；「打赏」在侧栏底部，二维码放在 renderer/assets/donate-qr.png。</p>
+            <p class="hint">更新入口在侧栏「更新」，一键直达夸克网盘整合包页；「打赏」在侧栏底部，二维码放在 renderer/assets/donate-qr.png。</p>
             <div class="set-actions" style="margin:16px 0 0">
               <button class="btn btn-gold" @click="saveSettings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
@@ -252,7 +248,7 @@
           </button>
         </div>
       </template>
-      <p class="modal-hint" v-else>更新链接待配置：请到「设置」中把夸克网盘地址粘贴到「更新链接」。</p>
+      <p class="modal-hint" v-else>更新链接待配置：请编辑软件目录下的 config.json（updateUrl 字段）。</p>
       <div class="modal-actions"><button class="btn" @click="updateOpen=false">关闭</button></div>
     </div>
   </div>
