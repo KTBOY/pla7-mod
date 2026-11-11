@@ -111,7 +111,8 @@
       <div class="scroll" v-if="tab !== 'settings' && scanData && cfg">
         <p class="dir-warn" v-if="!scanData.games[tab].dirExists">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-          <span>未找到该游戏目录：{{ scanData.games[tab].paksDir }}，请到「设置」中修正路径。</span>
+          <span v-if="scanData.games[tab].paksDir">未找到该游戏目录：{{ scanData.games[tab].paksDir }}，请到「设置」中修正路径。</span>
+          <span v-else>未检测到{{ tab === 'dlc' ? ' DLC' : '游戏' }}：请先安装，再到「设置」点「自动检测游戏」，或手动选择游戏根目录。</span>
         </p>
         <div class="dir-tip">
           <div class="tip-head"><span class="mk"></span><span class="zh">指引</span><span class="en">GUIDE</span></div>

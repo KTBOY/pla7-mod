@@ -217,7 +217,10 @@ const app = createApp({
       if (!r.ok) return;
       await autoDetect(r.dir);
     }
-    function openPath(p) { window.api.openPath(p); }
+    async function openPath(p) {
+      const r = await window.api.openPath(p);
+      if (r && r.ok === false) showToast(r.msg, 'error');
+    }
     function winMin() { window.api.winMin(); }
     function winClose() { window.api.winClose(); }
 

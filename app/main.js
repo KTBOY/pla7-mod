@@ -39,7 +39,7 @@ function findRootUpward(startDir) {
 
 function findRootOnDrives() {
   const drives = [];
-  for (const L of 'CDEFGH') {
+  for (const L of 'CDEFGHIJKLMNOPQRSTUVWXYZ') {
     try { if (fs.existsSync(L + ':\\')) drives.push(L + ':\\'); } catch {}
   }
   for (const dr of drives) {
@@ -654,7 +654,11 @@ ipcMain.handle('launch-game', async (_e, { gameKey }) => {
   return { ok: true };
 });
 
-ipcMain.handle('open-path', (_e, p) => { shell.openPath(p); });
+ipcMain.handle('open-path', (_e, p) => {
+  if (!p || !fs.existsSync(p)) return { ok: false, msg: '未找到游戏目录：请先安装游戏，或到「设置」自动检测 / 选择游戏根目录' };
+  shell.openPath(p);
+  return { ok: true };
+});
 ipcMain.handle('read-image', (_e, p) => {
   const data = fs.readFileSync(p);
   return 'data:image/' + path.extname(p).slice(1).replace('jpeg', 'jpg') + ';base64,' + data.toString('base64');
@@ -1034,6 +1038,9 @@ function createWindow() {
         log('作者入口位置=' + authorPos + ' 打开结果=' + JSON.stringify(authorOpen));
 
         const importBtn = await js("[...document.querySelectorAll('.toolbar-actions .btn')].some(x=>x.textContent.includes('导入 MOD'))");
+        const openGuard = await js('window.api.openPath("C:/pm7-no-such-dir-xyz")');
+        const openEmpty = await js('window.api.openPath("")');
+        log('打开目录守卫 不存在=' + JSON.stringify(openGuard) + ' 空路径=' + JSON.stringify(openEmpty));
         await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('设置')).click();})()");
         await new Promise((r) => setTimeout(r, 500));
         const urlHidden = await js('![...document.querySelectorAll(".field input")].some(x=>(x.placeholder||"").includes("pan.quark.cn")) && ' +
@@ -1054,6 +1061,7 @@ function createWindow() {
 
         console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
           authorPos && authorOpen.ok === true &&
+          openGuard.ok === false && openEmpty.ok === false &&
           (linkOpen === null || linkOpen.ok === true) &&
           stats.total === stats.uniq && stats.imgs === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }
