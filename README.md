@@ -3,6 +3,14 @@
 《仙剑奇侠传七》单机 MOD 管理器（Electron + Vue3，无构建步骤，Windows 便携免安装）。
 深色金调 HUD 界面（resonance-hud 设计语言），主游戏 / DLC 双库管理。
 
+## 界面预览
+
+![主界面 · 当前生效与工具栏](docs/screenshots/main.png)
+
+![MOD 库 · 卡片管理](docs/screenshots/library.png)
+
+![大图预览 · 启用/停用/重签](docs/screenshots/lightbox.png)
+
 ## 下载
 
 - 最新便携版 v1.3.0：[Pal7-Mod-Manager-1.3.0-portable.zip](https://github.com/KTBOY/pla7-mod/releases/download/v1.3.0/Pal7-Mod-Manager-1.3.0-portable.zip)

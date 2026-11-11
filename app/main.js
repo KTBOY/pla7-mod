@@ -1072,6 +1072,7 @@ function createWindow() {
           await new Promise((r) => setTimeout(r, 120));
           await shot('pm7-extras-lb-enter.png'); lbEnter = true;
           await new Promise((r) => setTimeout(r, 400));
+          await shot('pm7-extras-lightbox.png');
           await js("(()=>{[...document.querySelectorAll('.lb-toolbar .obtn')].find(x=>x.textContent.includes('关闭')).click();})()");
           await new Promise((r) => setTimeout(r, 300));
           ew.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 5 });
