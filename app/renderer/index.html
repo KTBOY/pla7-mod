@@ -101,7 +101,7 @@
             打开游戏目录
           </button>
           <button class="btn" @click="refresh()" :disabled="loading">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <svg :class="{spin: loading}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             {{ loading ? '扫描中…' : '刷新' }}
           </button>
         </div>
@@ -129,8 +129,8 @@
             <button class="btn btn-sm" v-if="scanData.games[tab].installed.length" @click="uninstallAll(tab)">全部停用</button>
           </h2>
           <div class="grid" v-if="scanData.games[tab].installed.length">
-            <mod-card v-for="m in scanData.games[tab].installed" :key="m.id"
-              :mod="m" installed
+            <mod-card v-for="(m, i) in scanData.games[tab].installed" :key="m.id"
+              :mod="m" installed :style="{ '--i': Math.min(i, 10) }"
               @uninstall="uninstall(m); closeZoom()" @del="del(m); closeZoom()" @preview="setPreview(m); closeZoom()" @zoom="openZoom(m)" />
           </div>
           <p class="empty" v-else>
@@ -152,8 +152,8 @@
               :class="{active: filter===c}" @click="filter=c">{{ c }}</button>
           </div>
           <div class="grid" v-if="filteredLibrary(tab).length">
-            <mod-card v-for="m in filteredLibrary(tab)" :key="m.id"
-              :mod="m"
+            <mod-card v-for="(m, i) in filteredLibrary(tab)" :key="m.id"
+              :mod="m" :style="{ '--i': Math.min(i, 10) }"
               @install="install(m, tab); closeZoom()" @del="del(m); closeZoom()" @preview="setPreview(m); closeZoom()" @zoom="openZoom(m)" />
           </div>
           <p class="empty" v-else>
@@ -217,6 +217,7 @@
   </div>
 
   <!-- 大图预览 -->
+  <transition name="lb">
   <div class="lightbox" v-if="zoomMod" @click.self="closeZoom()">
     <div class="lb-toolbar">
       <button class="obtn" v-if="scanData && scanData.games[tab].installed.some(m => m.hash === zoomMod.hash)"
@@ -234,8 +235,10 @@
     </div>
     <div class="lb-caption">{{ zoomMod.name }} · {{ zoomMod.category }}{{ zoomMod.role ? ' · ' + zoomMod.role : '' }} · {{ zoomMod.sizeMB }} MB</div>
   </div>
+  </transition>
 
   <!-- 更新弹窗 -->
+  <transition name="modal">
   <div class="modal-mask" v-if="updateOpen" @click.self="updateOpen=false">
     <div class="modal-panel">
       <i class="cn"></i><i class="cn"></i><i class="cn"></i><i class="cn"></i>
@@ -257,8 +260,10 @@
       <div class="modal-actions"><button class="btn" @click="updateOpen=false">关闭</button></div>
     </div>
   </div>
+  </transition>
 
   <!-- 打赏弹窗 -->
+  <transition name="modal">
   <div class="modal-mask" v-if="donateOpen" @click.self="donateOpen=false">
     <div class="modal-panel">
       <i class="cn"></i><i class="cn"></i><i class="cn"></i><i class="cn"></i>
@@ -271,6 +276,7 @@
       <div class="modal-actions"><button class="btn" @click="donateOpen=false">关闭</button></div>
     </div>
   </div>
+  </transition>
 
   <!-- Toast -->
   <transition name="toast">

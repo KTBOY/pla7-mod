@@ -373,7 +373,9 @@ body {
   width: 100%; height: 100%;
   object-fit: cover;
   object-position: center top;
+  transition: transform .45s var(--ease);
 }
+.grid .card:hover .preview img { transform: scale(1.045); }
 .card .preview .ph { text-align: center; color: var(--cream-dim); font-size: 14px; letter-spacing: 4px; opacity: .7; }
 .card .preview .ph i {
   display: block; font-style: normal;
@@ -436,15 +438,16 @@ body {
   backdrop-filter: none;
   clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%);
 }
-.card .actions .obtn:hover { background: rgba(201,172,103,.14); border-color: var(--gold); color: var(--gold-bright); }
+.card .actions .obtn:hover { background: rgba(201,172,103,.14); border-color: var(--gold); color: var(--gold-bright); transform: translateY(-1px); }
 .card .actions .obtn-gold {
   background: linear-gradient(135deg, var(--gold-bright), var(--gold));
   border-color: var(--gold-bright);
   color: #14161a;
 }
-.card .actions .obtn-gold:hover { filter: brightness(1.1); color: #14161a; }
+.card .actions .obtn-gold:hover { background: linear-gradient(135deg, var(--gold-bright), var(--gold)); border-color: var(--gold-bright); filter: brightness(1.1); color: #14161a; }
 .card .actions .obtn-danger:hover { background: rgba(255,107,94,.12); border-color: var(--danger); color: var(--danger); }
 .obtn {
+  position: relative;
   display: inline-flex; align-items: center;
   padding: 3px 9px;
   background: rgba(10,11,13,.72);
@@ -455,13 +458,13 @@ body {
   backdrop-filter: blur(3px);
   transition: all .15s var(--ease);
 }
-.obtn:hover { background: rgba(10,11,13,.92); border-color: var(--gold-bright); color: var(--gold-bright); }
+.obtn:hover { background: rgba(10,11,13,.92); border-color: var(--gold-bright); color: var(--gold-bright); transform: translateY(-1px); }
 .obtn-gold {
   background: linear-gradient(135deg, var(--gold-bright), var(--gold));
   border-color: var(--gold-bright);
   color: #14161a; font-weight: 700;
 }
-.obtn-gold:hover { filter: brightness(1.1); color: #14161a; }
+.obtn-gold:hover { background: linear-gradient(135deg, var(--gold-bright), var(--gold)); border-color: var(--gold-bright); filter: brightness(1.1); color: #14161a; }
 .obtn-danger:hover { border-color: var(--danger); color: var(--danger); }
 
 /* ===== 大图预览 ===== */
@@ -623,6 +626,77 @@ body {
   object-fit: contain;
 }
 .donate-thanks { text-align: center; margin-top: 12px; }
+
+/* ===== 微交互：按压 / 焦点 / 扫光 / 入场 / 弹层过渡 ===== */
+/* 按压：按下瞬间快速下沉，松开按各自 transition 回弹 */
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:active:not(:disabled),
+.card .actions .obtn:active, .obtn:active,
+.author-entry:active, .tb-btn:active,
+.seg button:active, .nav-item:active {
+  transform: translateY(1px) scale(.97);
+  transition-duration: .06s;
+}
+/* 键盘焦点：clip-path 会裁掉外 outline，用内描边发丝环 */
+.btn:focus-visible, .obtn:focus-visible, .author-entry:focus-visible,
+.nav-item:focus-visible, .seg button:focus-visible, .tb-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--gold-bright);
+}
+.btn-gold:focus-visible, .obtn-gold:focus-visible { box-shadow: inset 0 0 0 1px rgba(20,22,26,.7); }
+
+/* 金色按钮：悬停时一道斜向扫光（clip-path 沿切角裁切） */
+.btn-gold, .obtn-gold { overflow: hidden; }
+.btn-gold::after, .obtn-gold::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.38) 50%, transparent 58%);
+  transform: translateX(-130%);
+}
+.btn-gold:hover::after, .obtn-gold:hover::after { transform: translateX(130%); transition: transform .5s var(--ease); }
+
+/* 刷新扫描：图标旋转 */
+@keyframes hud-rot { to { transform: rotate(360deg); } }
+.btn svg.spin { animation: hud-rot .9s linear infinite; }
+
+/* 卡片入场：按索引错峰上浮，切换页签/筛选时成组浮现 */
+@keyframes card-in { from { opacity: 0; transform: translateY(10px); } }
+.grid .card {
+  animation: card-in .34s var(--ease) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+/* 启用/停用切换：新按钮节点轻浮现；生效徽标滑入；卡片边框一次性提亮脉冲 */
+@keyframes btn-in { from { opacity: 0; transform: translateY(3px); } }
+.card .actions .obtn { animation: btn-in .22s var(--ease); }
+@keyframes badge-in { from { opacity: 0; transform: translateX(6px); } }
+.badge-installed { animation: badge-in .3s var(--ease); }
+@keyframes card-arm { from { border-color: var(--gold-bright); background: rgba(201,172,103,.16); } }
+.card.installed { animation: card-arm .45s var(--ease); }
+/* 已生效卡片的「停用」按钮读作选中态：金色描边 */
+.card.installed .actions .obtn:first-child {
+  border-color: var(--gold-dim); color: var(--gold-bright);
+  background: rgba(201,172,103,.1);
+}
+.card.installed .actions .obtn:first-child:hover { background: rgba(201,172,103,.18); border-color: var(--gold); }
+
+/* 侧栏激活条：纵向展开 */
+@keyframes nav-bar { from { transform: scaleY(0); } }
+.nav-item.active::before { animation: nav-bar .25s var(--ease); transform-origin: top; }
+
+/* 大图预览：遮罩淡入 + 画框缩放落位 */
+.lb-enter-active, .lb-leave-active { transition: opacity .22s var(--ease); }
+.lb-enter-active .lb-frame { transition: transform .28s var(--ease), opacity .28s var(--ease); }
+.lb-leave-active .lb-frame { transition: transform .16s var(--ease), opacity .16s var(--ease); }
+.lb-enter-from, .lb-leave-to { opacity: 0; }
+.lb-enter-from .lb-frame { transform: scale(.96) translateY(8px); opacity: 0; }
+.lb-leave-to .lb-frame { transform: scale(.98) translateY(6px); opacity: 0; }
+
+/* 模态弹窗：遮罩淡入 + 面板上浮落位，关闭更快收 */
+.modal-enter-active, .modal-leave-active { transition: opacity .2s var(--ease); }
+.modal-enter-active .modal-panel { transition: transform .28s var(--ease), opacity .28s var(--ease); }
+.modal-leave-active .modal-panel { transition: transform .16s var(--ease), opacity .16s var(--ease); }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
+.modal-enter-from .modal-panel { transform: translateY(12px) scale(.97); opacity: 0; }
+.modal-leave-to .modal-panel { transform: translateY(6px) scale(.98); opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: .01ms !important; animation-duration: .01ms !important; }

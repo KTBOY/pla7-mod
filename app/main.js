@@ -134,7 +134,7 @@ function ensureGamePaths(cfg) {
       cfg.games.dlc.paksDir = derived.dlc.paksDir;
       cfg.games.dlc.exe = derived.dlc.exe;
     }
-    try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8'); } catch {}
+    if (!process.env.PM_EXTRAS) { try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8'); } catch {} }
   }
   return cfg;
 }
@@ -987,6 +987,10 @@ function createWindow() {
       width: 1280, height: 820, show: false, frame: false,
       webPreferences: { preload: path.join(__dirname, 'preload.js'), offscreen: true },
     });
+    let pageErr = 0;
+    ew.webContents.on('console-message', (_e, level, message) => {
+      if (level >= 2) { pageErr++; console.log('[EXTRAS] PAGE-ERR ' + message); }
+    });
     ew.loadFile(path.join(__dirname, 'renderer', 'index.html'));
     ew.webContents.once('did-finish-load', async () => {
       const log = (m) => console.log('[EXTRAS]', m);
@@ -1010,7 +1014,9 @@ function createWindow() {
 
         // 更新弹窗：链接未配置时显提示，配置后显金色按钮
         await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('更新')).click();})()");
-        await new Promise((r) => setTimeout(r, 600));
+        await new Promise((r) => setTimeout(r, 120));
+        await shot('pm7-extras-modal-enter.png');
+        await new Promise((r) => setTimeout(r, 500));
         const updOpen = await js("[...document.querySelectorAll('.modal-title')].some(x=>x.textContent.includes('检查更新'))");
         const updState = await js('!!document.querySelector(".modal-mask .btn-gold") === ' + (!!extras.updateUrl));
         log('更新弹窗打开=' + updOpen + ' 链接状态匹配=' + updState);
@@ -1041,6 +1047,38 @@ function createWindow() {
         const openGuard = await js('window.api.openPath("C:/pm7-no-such-dir-xyz")');
         const openEmpty = await js('window.api.openPath("")');
         log('打开目录守卫 不存在=' + JSON.stringify(openGuard) + ' 空路径=' + JSON.stringify(openEmpty));
+
+        // 微交互实测：真实鼠标事件触发 :hover/:active（按压选「放大」——只读，不碰库）
+        const htmlSrc = fs.readFileSync(path.join(__dirname, 'renderer', 'index.html'), 'utf8');
+        const cssSrc = fs.readFileSync(path.join(__dirname, 'renderer', 'style.css'), 'utf8');
+        const wiringOk = htmlSrc.includes(':class="{spin: loading}"') && htmlSrc.includes('<transition name="modal">') &&
+          htmlSrc.includes('<transition name="lb">') && cssSrc.includes('@keyframes hud-rot') && cssSrc.includes('.modal-enter-from .modal-panel');
+        const goldRect = await js('(()=>{const g=document.querySelectorAll(".grid")[1]; const b=g&&g.querySelector(".obtn-gold"); if(!b) return null; b.scrollIntoView({block:"center"}); const r=b.getBoundingClientRect(); return {x:r.x+r.width/2, y:r.y+r.height/2};})()');
+        let hoverShot = false;
+        if (goldRect) {
+          ew.webContents.sendInputEvent({ type: 'mouseMove', x: goldRect.x, y: goldRect.y });
+          await new Promise((r) => setTimeout(r, 260));
+          await shot('pm7-extras-hover.png'); hoverShot = true;
+        }
+        const zoomRect = await js('(()=>{const g=document.querySelectorAll(".grid")[1]; const b=g&&g.querySelector(".card .actions .obtn:last-child"); if(!b) return null; const r=b.getBoundingClientRect(); return {x:r.x+r.width/2, y:r.y+r.height/2};})()');
+        let pressShot = false, lbEnter = false;
+        if (zoomRect) {
+          ew.webContents.sendInputEvent({ type: 'mouseMove', x: zoomRect.x, y: zoomRect.y });
+          await new Promise((r) => setTimeout(r, 200));
+          ew.webContents.sendInputEvent({ type: 'mouseDown', x: zoomRect.x, y: zoomRect.y, button: 'left', clickCount: 1 });
+          await new Promise((r) => setTimeout(r, 90));
+          await shot('pm7-extras-press.png'); pressShot = true;
+          ew.webContents.sendInputEvent({ type: 'mouseUp', x: zoomRect.x, y: zoomRect.y, button: 'left', clickCount: 1 });
+          await new Promise((r) => setTimeout(r, 120));
+          await shot('pm7-extras-lb-enter.png'); lbEnter = true;
+          await new Promise((r) => setTimeout(r, 400));
+          await js("(()=>{[...document.querySelectorAll('.lb-toolbar .obtn')].find(x=>x.textContent.includes('关闭')).click();})()");
+          await new Promise((r) => setTimeout(r, 300));
+          ew.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 5 });
+        }
+        const spinTry = await js('(()=>{const b=[...document.querySelectorAll(".toolbar-actions .btn")].find(x=>x.textContent.includes("刷新")); b.click(); return new Promise(res=>setTimeout(()=>res(b.querySelector("svg").classList.contains("spin")),30));})()');
+        const hasLib = await js('!!document.querySelectorAll(".grid")[1]');
+        log('微交互接线=' + wiringOk + ' 有库=' + hasLib + ' hover截图=' + hoverShot + ' 按压截图=' + pressShot + ' 大图入场截图=' + lbEnter + ' 刷新旋转捕捉=' + spinTry);
         await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('设置')).click();})()");
         await new Promise((r) => setTimeout(r, 500));
         const urlHidden = await js('![...document.querySelectorAll(".field input")].some(x=>(x.placeholder||"").includes("pan.quark.cn")) && ' +
@@ -1062,6 +1100,7 @@ function createWindow() {
         console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
           authorPos && authorOpen.ok === true &&
           openGuard.ok === false && openEmpty.ok === false &&
+          wiringOk && pageErr === 0 && (!hasLib || (hoverShot && pressShot && lbEnter)) &&
           (linkOpen === null || linkOpen.ok === true) &&
           stats.total === stats.uniq && stats.imgs === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }
