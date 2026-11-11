@@ -1093,6 +1093,8 @@ function createWindow() {
           'const names=cards.map(c=>c.querySelector(".name").textContent.trim());' +
           'return {total:cards.length, uniq:new Set(names).size, imgs:cards.filter(c=>c.querySelector(".preview img")).length};})()');
         log('MOD库 卡片=' + stats.total + ' 去重后=' + stats.uniq + ' 有预览图=' + stats.imgs);
+        const restartHint = await js('(()=>{const s=document.querySelector(".section-title small"); return !!s && s.textContent.includes("重启游戏");})()');
+        log('重启提示常驻=' + restartHint);
         await js("(()=>{const s=document.querySelector('.scroll'); s.scrollTop=s.scrollHeight;})()");
         await new Promise((r) => setTimeout(r, 600));
         await shot('pm7-extras-grid.png');
@@ -1100,7 +1102,7 @@ function createWindow() {
         console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
           authorPos && authorOpen.ok === true &&
           openGuard.ok === false && openEmpty.ok === false &&
-          wiringOk && pageErr === 0 && (!hasLib || (hoverShot && pressShot && lbEnter)) &&
+          wiringOk && pageErr === 0 && (!hasLib || (hoverShot && pressShot && lbEnter)) && restartHint &&
           (linkOpen === null || linkOpen.ok === true) &&
           stats.total === stats.uniq && stats.imgs === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }

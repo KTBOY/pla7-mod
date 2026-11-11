@@ -145,7 +145,7 @@ const app = createApp({
         const r = await window.api.install({ mod: plain(mod), gameKey });
         if (r.ok) {
           const rep = r.disabled > 0 ? `（已替换同槽位：${(r.disabledNames || []).slice(0, r.disabled).join('、')}）` : '（与现有 MOD 共存）';
-          showToast(`已启用：${r.name} ${rep}`);
+          showToast(`已启用：${r.name} ${rep} · 重启游戏后生效`);
         } else showToast(r.msg || '启用失败', 'error');
       } catch (e) { showToast('启用失败：' + e.message, 'error'); }
       refresh();
@@ -153,13 +153,13 @@ const app = createApp({
     async function uninstallAll(gameKey) {
       const list = scanData.value.games[gameKey].installed;
       for (const m of list) await window.api.uninstall({ mod: plain(m) });
-      showToast('已全部停用');
+      showToast('已全部停用 · 重启游戏后生效');
       refresh();
     }
     async function uninstall(mod) {
       try {
         const r = await window.api.uninstall({ mod: plain(mod) });
-        showToast(r.ok ? `已停用：${r.name}` : '停用失败', r.ok ? 'ok' : 'error');
+        showToast(r.ok ? `已停用：${r.name} · 重启游戏后生效` : '停用失败', r.ok ? 'ok' : 'error');
       } catch (e) { showToast('停用失败：' + e.message, 'error'); }
       refresh();
     }

@@ -322,6 +322,7 @@ body {
 .section-title .mk.live { background: var(--live); box-shadow: 0 0 6px rgba(110,231,160,.55); }
 .section-title .zh { font-size: 14px; font-weight: 600; letter-spacing: 1.5px; color: var(--cream); }
 .section-title small { color: var(--cream-dim); font-size: 11px; letter-spacing: 0; }
+.section-title small b { color: var(--gold); font-weight: 600; }
 .section-title .ln { flex: 1; height: 1px; background: linear-gradient(90deg, var(--gold-dim), transparent); }
 .section-title .en { font: 400 8.5px/1 var(--latin); letter-spacing: 2.2px; color: var(--gold-dim); flex: none; }
 .section-title .btn-sm { margin-left: 10px; flex: none; }
@@ -535,7 +536,9 @@ body {
 .toast {
   position: fixed; bottom: 34px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 9px;
+  max-width: calc(100vw - 64px);
   padding: 10px 24px;
+  line-height: 1.7; text-align: left;
   background: linear-gradient(168deg, var(--bg-1), var(--bg-0));
   border: 1px solid var(--gold-dim);
   color: var(--gold-bright);
