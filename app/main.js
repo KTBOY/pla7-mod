@@ -751,7 +751,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     frame: false,
-    backgroundColor: '#14100d',
+    backgroundColor: '#14161a',
     icon: path.join(__dirname, 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -960,6 +960,7 @@ function createWindow() {
         const shot = async (name) => fs.writeFileSync(path.join(os.tmpdir(), name), (await ew.webContents.capturePage()).toPNG());
         const extras = await js('window.api.getExtras()');
         log('version=' + extras.version + ' updateUrl="' + extras.updateUrl + '" donateQr=' + (extras.donateQr ? 'yes' : 'no'));
+        await shot('pm7-extras-main.png');
 
         const bad = await js("window.api.openExternal('javascript:alert(1)')");
         log('javascript: 链接被拒=' + (bad.ok === false));
@@ -999,6 +1000,7 @@ function createWindow() {
         await new Promise((r) => setTimeout(r, 500));
         const urlField = await js('!!([...document.querySelectorAll(".field input")].find(x=>(x.placeholder||"").includes("pan.quark.cn")))');
         log('导入按钮=' + importBtn + ' 设置更新链接字段=' + urlField);
+        await shot('pm7-extras-settings.png');
 
         // 回 MOD 页统计卡片：去重后应无同名重复、预览图齐全
         await js("(()=>{document.querySelectorAll('.nav-item')[0].click();})()");

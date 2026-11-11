@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "skills": {
+    "resonance-hud": {
+      "source": "KTBOY/resonance-hud",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "1ee98fa0c9d11bec4e7fbfaf0dc7df904cc251b1fa974044bac96a78bc875eab"
+    }
+  }
+}

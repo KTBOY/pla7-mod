@@ -1,4 +1,12 @@
-const { createApp, ref, reactive, onMounted, defineComponent } = Vue;
+const { createApp, ref, reactive, computed, onMounted, defineComponent } = Vue;
+
+/* ---------- 描边图标（内联 SVG，无 emoji） ---------- */
+const ICONS = {
+  main: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>',
+  dlc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 9-9 9-9-9 9-9Z"/><path d="M12 8.5l3.5 3.5-3.5 3.5-3.5-3.5L12 8.5Z"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/></svg>',
+  update: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10Z"/></svg>',
+};
 
 /* ---------- MOD 卡片组件 ---------- */
 const ModCard = defineComponent({
@@ -14,11 +22,12 @@ const ModCard = defineComponent({
     }
   },
   template: `
-    <div class="card">
+    <div class="card" :class="{installed: installed}">
+      <i class="cn"></i><i class="cn"></i><i class="cn"></i><i class="cn"></i>
       <div class="preview" @click="$emit('zoom')" title="点击查看大图">
         <img v-if="previewUrl" :src="previewUrl" />
-        <span v-else class="ph">无图</span>
-        <span v-if="installed" class="badge-installed">生效中</span>
+        <span v-else class="ph">无图<i>NO PREVIEW</i></span>
+        <span v-if="installed" class="badge-installed"><s></s>生效中</span>
         <!-- 悬浮按钮：半透明，悬停卡片时变清晰 -->
         <div class="overlay" @click.stop>
           <button class="obtn" v-if="installed" @click="$emit('uninstall')">停用</button>
@@ -36,7 +45,7 @@ const ModCard = defineComponent({
           <em class="tag" v-if="mod.role">{{ mod.role }}</em>
           <em class="tag tag-warn" v-if="!mod.sigPath" title="启用时会用游戏自带签名自动补一个">无签名</em>
         </div>
-        <div class="meta">{{ mod.sizeMB }} MB</div>
+        <div class="meta"><i></i>{{ mod.sizeMB }} MB</div>
       </div>
     </div>
   `,
@@ -61,6 +70,11 @@ const app = createApp({
 
     const gameKeys = ['main', 'dlc'];
     const filter = ref('全部');
+    const filterIndex = computed(() => ['全部', '服装', '武器'].indexOf(filter.value));
+    const totalLibrary = computed(() => scanData.value
+      ? scanData.value.games.main.library.length + scanData.value.games.dlc.library.length : 0);
+    const totalInstalled = computed(() => scanData.value
+      ? scanData.value.games.main.installed.length + scanData.value.games.dlc.installed.length : 0);
     const extras = reactive({ version: '', updateUrl: '', donateQr: null });
     const updateOpen = ref(false);
     const donateOpen = ref(false);
@@ -77,7 +91,7 @@ const app = createApp({
       if (filter.value === '全部') return list;
       return list.filter((m) => (m.category || '服装') === filter.value);
     }
-    function tabGlyph(k) { return k === 'main' ? '⚔' : '◈'; }
+    function tabIcon(k) { return ICONS[k] || ICONS.main; }
     function countInstalled(k) {
       return scanData.value ? scanData.value.games[k].installed.length : 0;
     }
@@ -206,9 +220,10 @@ const app = createApp({
     function winClose() { window.api.winClose(); }
 
     return {
-      cfg, scanData, tab, loading, toast, gameKeys, filter, filteredLibrary,
+      cfg, scanData, tab, loading, toast, gameKeys, filter, filterIndex, filteredLibrary,
+      totalLibrary, totalInstalled,
       zoomMod, zoomUrl, openZoom, closeZoom,
-      tabGlyph, countInstalled, refresh,
+      tabIcon, countInstalled, refresh,
       install, uninstall, uninstallAll, del, setPreview, resign, importMods, importFolder, launch,
       saveSettings, autoDetect, pickRoot, openPath, winMin, winClose,
       extras, updateOpen, donateOpen, openUpdate, openDonate, openUpdateUrl,

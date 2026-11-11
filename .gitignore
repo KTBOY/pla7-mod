@@ -2,3 +2,6 @@ app/皮肤/
 app/.workbuddy/
 shot-*.png
 node_modules/
+.claude/
+agent/
+.agents/skills/resonance-hud/pubilc/

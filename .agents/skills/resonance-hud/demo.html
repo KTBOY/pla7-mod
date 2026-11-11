@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resonance HUD · 组件画廊 Component Gallery</title>
+  <style>
+    /* ===== 设计令牌（见 SKILL.md）/ Design tokens (see SKILL.md) ===== */
+    :root {
+      --gold: #c9ac67;
+      --gold-bright: #e6cf95;
+      --gold-dim: rgba(201, 172, 103, .3);
+      --cream: #fafae9;
+      --cream-dim: rgba(250, 250, 233, .45);
+      --bg-0: #14161a;
+      --bg-1: #1b1e23;
+      --card: rgba(255, 255, 255, .035);
+      --hair: rgba(201, 172, 103, .2);
+      --theme: #d9b45c;
+      --ease: cubic-bezier(.32, .72, .24, 1);
+      --latin: "Bahnschrift", "DIN Alternate", "Segoe UI", sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: inherit;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #0d0e11;
+      color: var(--cream);
+      font: 14px/1.6 "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+      display: flex;
+      justify-content: center;
+      padding: 32px 20px 60px;
+    }
+
+    .stage {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .stage>h2 {
+      font: 400 9px/1 var(--latin);
+      letter-spacing: 3px;
+      color: var(--gold-dim);
+      margin: 26px 0 9px;
+    }
+
+    .stage>h2:first-child {
+      margin-top: 0;
+    }
+
+    /* ===== 面板基底 / Panel base ===== */
+    .panel {
+      position: relative;
+      background:
+        radial-gradient(130% 80% at 100% 0%, rgba(201, 172, 103, .11), transparent 62%),
+        linear-gradient(168deg, var(--bg-1), var(--bg-0) 62%);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(115deg,
+          rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px);
+      pointer-events: none;
+    }
+
+    .panel::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--gold), rgba(201, 172, 103, .35));
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .panel-body {
+      position: relative;
+      padding: 0 16px 14px;
+    }
+
+    /* ===== 标题栏 / Title bar ===== */
+    .titlebar {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 8px 9px 16px;
+    }
+
+    .diamond {
+      width: 9px;
+      height: 9px;
+      flex: none;
+      background: var(--gold);
+      transform: rotate(45deg);
+      box-shadow: 0 0 8px rgba(201, 172, 103, .7);
+    }
+
+    .titlebar .tt {
+      flex: 1;
+      line-height: 1.15;
+    }
+
+    .titlebar .tt b {
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .titlebar .tt i {
+      display: block;
+      font-style: normal;
+      font: 400 8.5px/1 var(--latin);
+      letter-spacing: 2.4px;
+      color: var(--gold-dim);
+      margin-top: 2px;
+    }
+
+    .titlebar .close {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cream-dim);
+      transition: all .15s var(--ease);
+    }
+
+    .titlebar .close:hover {
+      color: #ff6b5e;
+      background: rgba(255, 107, 94, .12);
+    }
+
+    /* ===== 页头 / Page header ===== */
+    .head {
+      padding: 2px 2px 14px;
+    }
+
+    .head h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      line-height: 1.2;
+    }
+
+    .head .sub {
+      font: 400 9px/1 var(--latin);
+      letter-spacing: 3.4px;
+      color: var(--gold);
+      margin-top: 5px;
+    }
+
+    .head .state {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--cream-dim);
+      margin-top: 9px;
+    }
+
+    .head .state s {
+      width: 4px;
+      height: 4px;
+      background: #6ee7a0;
+      transform: rotate(45deg);
+      text-decoration: none;
+      box-shadow: 0 0 6px #6ee7a0;
+    }
+
+    /* ===== 卡片 + 四角角标 / Card + corner brackets ===== */
+    .card {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--hair);
+      padding: 13px 14px;
+      margin-bottom: 9px;
+    }
+
+    .card::before,
+    .card::after {
+      content: '';
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-color: var(--gold);
+      pointer-events: none;
+    }
+
+    .card::before {
+      left: -1px;
+      top: -1px;
+      border-top: 1.5px solid;
+      border-left: 1.5px solid;
+    }
+
+    .card::after {
+      right: -1px;
+      bottom: -1px;
+      border-bottom: 1.5px solid;
+      border-right: 1.5px solid;
+    }
+
+    /* ===== 中英双语区块标题 / Bilingual section header ===== */
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .card-head .mk {
+      width: 3px;
+      height: 12px;
+      background: var(--gold);
+      flex: none;
+    }
+
+    .card-head .zh {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+    }
+
+    .card-head .ln {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--gold-dim), transparent);
+    }
+
+    .card-head .en {
+      font: 400 8.5px/1 var(--latin);
+      letter-spacing: 2.2px;
+      color: var(--gold-dim);
+    }
+
+    /* ===== 项选择器 / Item picker ===== */
+    .picker {
+      display: flex;
+      gap: 9px;
+      overflow-x: auto;
+      padding: 6px 4px 12px;
+      margin: -6px -4px -12px;
+      scrollbar-width: none;
+    }
+
+    .picker::-webkit-scrollbar {
+      display: none;
+    }
+
+    .item {
+      position: relative;
+      flex: none;
+      width: 84px;
+      padding: 6px 6px 7px;
+      background: rgba(0, 0, 0, .28);
+      border: 1px solid rgba(255, 255, 255, .07);
+      text-align: center;
+      transition: all .2s var(--ease);
+    }
+
+    .item:hover {
+      transform: translateY(-2px);
+      border-color: rgba(201, 172, 103, .4);
+    }
+
+    .item.active {
+      border-color: var(--gold);
+      background: rgba(201, 172, 103, .1);
+      box-shadow: 0 0 0 1px rgba(201, 172, 103, .25), 0 6px 18px rgba(0, 0, 0, .5);
+    }
+
+    .item .cn {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-color: var(--gold-bright);
+      opacity: 0;
+      transition: opacity .2s;
+    }
+
+    .item.active .cn {
+      opacity: 1;
+    }
+
+    .item .cn:nth-of-type(1) {
+      left: -1px;
+      top: -1px;
+      border-top: 1.5px solid;
+      border-left: 1.5px solid;
+    }
+
+    .item .cn:nth-of-type(2) {
+      right: -1px;
+      top: -1px;
+      border-top: 1.5px solid;
+      border-right: 1.5px solid;
+    }
+
+    .item .cn:nth-of-type(3) {
+      left: -1px;
+      bottom: -1px;
+      border-bottom: 1.5px solid;
+      border-left: 1.5px solid;
+    }
+
+    .item .cn:nth-of-type(4) {
+      right: -1px;
+      bottom: -1px;
+      border-bottom: 1.5px solid;
+      border-right: 1.5px solid;
+    }
+
+    .item .thumb {
+      height: 72px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, .5)),
+        linear-gradient(165deg, color-mix(in srgb, var(--c, var(--theme)) 32%, #12141a), #12141a);
+    }
+
+    /* 占位字符——真实项目里这里放 <img> / Placeholder glyph — real projects put an <img> here */
+    .item .thumb span {
+      font: 700 26px/1 var(--latin);
+      color: color-mix(in srgb, var(--c, var(--theme)) 70%, #fff);
+      opacity: .55;
+    }
+
+    .item .nm {
+      font-size: 11.5px;
+      letter-spacing: .5px;
+      margin-top: 6px;
+      color: var(--cream-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item.active .nm {
+      color: var(--cream);
+      font-weight: 600;
+    }
+
+    /* ===== 读数 + 滑杆 / Readout + slider ===== */
+    .val-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin: -2px 0 2px;
+    }
+
+    .readout {
+      font: 700 32px/1 var(--latin);
+      color: var(--gold-bright);
+      letter-spacing: 1px;
+      text-shadow: 0 0 18px rgba(201, 172, 103, .45);
+    }
+
+    .readout small {
+      font-size: 13px;
+      margin-left: 2px;
+      color: var(--gold-dim);
+    }
+
+    .val-row .hint {
+      font: 400 8.5px/1 var(--latin);
+      letter-spacing: 2px;
+      color: var(--cream-dim);
+      padding-bottom: 3px;
+    }
+
+    .slider-box {
+      padding: 8px 0 4px;
+    }
+
+    input[type=range] {
+      width: 100%;
+      height: 22px;
+      -webkit-appearance: none;
+      background: transparent;
+      display: block;
+      cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-runnable-track {
+      height: 4px;
+      background:
+        linear-gradient(90deg, var(--gold), var(--gold-bright)) 0/var(--pct, 50%) 100% no-repeat,
+        rgba(255, 255, 255, .1);
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      margin-top: -4px;
+      background: var(--gold-bright);
+      border: none;
+      transform: rotate(45deg);
+      box-shadow: 0 0 10px rgba(201, 172, 103, .85);
+      transition: box-shadow .12s var(--ease);
+    }
+
+    input[type=range]:active::-webkit-slider-thumb {
+      box-shadow: 0 0 16px rgba(230, 207, 149, 1);
+    }
+
+    .ticks {
+      display: flex;
+      justify-content: space-between;
+      font: 400 9px/1 var(--latin);
+      letter-spacing: 1.2px;
+      color: var(--cream-dim);
+      margin-top: 2px;
+    }
+
+    /* ===== 分段控件 / Segmented control ===== */
+    .seg {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin-top: 11px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(0, 0, 0, .25);
+    }
+
+    .seg .pill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 25%;
+      background: rgba(201, 172, 103, .18);
+      border-bottom: 1.5px solid var(--gold);
+      transform: translateX(calc(var(--i, 0) * 100%));
+      transition: transform .28s var(--ease), opacity .18s;
+      pointer-events: none;
+    }
+
+    .seg button {
+      position: relative;
+      padding: 6px 0;
+      font-size: 12.5px;
+      letter-spacing: 1px;
+      color: var(--cream-dim);
+      transition: color .18s var(--ease);
+    }
+
+    .seg button:hover {
+      color: var(--cream);
+    }
+
+    .seg button.active {
+      color: var(--gold-bright);
+      font-weight: 600;
+    }
+
+    /* ===== 开关行 / Switch row ===== */
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .icoframe {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+      background: rgba(201, 172, 103, .1);
+      border: 1px solid var(--gold-dim);
+      /* 切角：边框随盒子一起被裁剪，自动沿对角线描线 / Chamfer: the border is clipped with the box, so it traces the diagonal */
+      clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+    }
+
+    .row .txt {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .row .name {
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .row .desc {
+      font-size: 11px;
+      color: var(--cream-dim);
+    }
+
+    .switch {
+      position: relative;
+      flex: none;
+      width: 44px;
+      height: 20px;
+      background: rgba(0, 0, 0, .45);
+      border: 1px solid rgba(255, 255, 255, .14);
+      transition: all .2s var(--ease);
+    }
+
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 14px;
+      background: rgba(250, 250, 233, .5);
+      transition: transform .2s var(--ease), background .2s;
+      /* 斜切拨杆——实心填色自带边缘 / Slanted knob — solid fill defines its own edge */
+      clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+    }
+
+    .switch[aria-checked="true"] {
+      border-color: var(--gold);
+      background: rgba(201, 172, 103, .2);
+      box-shadow: 0 0 12px rgba(201, 172, 103, .3);
+    }
+
+    .switch[aria-checked="true"]::after {
+      transform: translateX(22px);
+      background: var(--gold-bright);
+    }
+
+    /* ===== 带节点的发丝分割线 / Divider with node ===== */
+    .divider {
+      position: relative;
+      height: 1px;
+      margin: 12px 0;
+      background: linear-gradient(90deg, transparent, var(--hair) 20%, var(--hair) 80%, transparent);
+    }
+
+    .divider::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: -2.5px;
+      width: 5px;
+      height: 5px;
+      margin-left: -2.5px;
+      background: var(--gold-dim);
+      transform: rotate(45deg);
+    }
+
+    /* ===== 页脚装饰 / Footer ornament ===== */
+    .foot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding-top: 10px;
+      font: 400 8.5px/1 var(--latin);
+      letter-spacing: 2px;
+      color: var(--cream-dim);
+      position: relative;
+      z-index: 1;
+    }
+
+    .dots {
+      display: grid;
+      grid-template-columns: 2px 2px;
+      grid-template-rows: 2px 2px 2px;
+      gap: 1.5px;
+      opacity: .55;
+    }
+
+    .dots i {
+      background: var(--gold);
+    }
+
+    .dots.mirror {
+      transform: scaleX(-1);
+    }
+
+    /* ===== 共鸣接入按钮 / Resonance link button ===== */
+    .rlink-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 44px 0 40px;
+      position: relative;
+    }
+
+    .rlink-stage .diamond {
+      position: absolute;
+      top: 50%;
+      width: 6px;
+      height: 6px;
+      margin-top: -3px;
+      background: var(--gold);
+      transform: rotate(45deg);
+      box-shadow: 0 0 8px rgba(201, 172, 103, .7);
+    }
+
+    .rlink-stage .diamond.l {
+      left: 6px;
+    }
+
+    .rlink-stage .diamond.r {
+      right: 6px;
+    }
+
+    .rlink {
+      outline: none;
+      cursor: pointer;
+      font-size: 21px;
+      font-family: inherit;
+      background: transparent;
+      border: 0;
+      position: relative;
+      width: 230px;
+      height: 74px;
+    }
+
+    .rlink::before,
+    .rlink::after {
+      content: '';
+      position: absolute;
+      z-index: 20;
+      width: 9px;
+      height: 9px;
+      border-color: var(--gold);
+      pointer-events: none;
+      transition: all .3s var(--ease);
+    }
+
+    .rlink::before {
+      right: -7px;
+      top: -7px;
+      border-top: 1.5px solid;
+      border-right: 1.5px solid;
+    }
+
+    .rlink::after {
+      left: 5px;
+      bottom: 5px;
+      border-bottom: 1.5px solid;
+      border-left: 1.5px solid;
+    }
+
+    .rlink:hover::before {
+      right: -9px;
+      top: -9px;
+      border-color: var(--gold-bright);
+    }
+
+    .rlink:hover::after {
+      left: 7px;
+      bottom: 7px;
+      border-color: var(--gold-bright);
+    }
+
+    .rlink-bg {
+      position: absolute;
+      inset: 0;
+      background: #262117;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    .rlink-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      transition: all .3s var(--ease);
+      box-shadow:
+        -6px 6px 0 0 rgba(201, 172, 103, .14),
+        -12px 12px 0 0 rgba(201, 172, 103, .09),
+        -18px 18px 0 0 rgba(201, 172, 103, .05),
+        0 18px 40px rgba(0, 0, 0, .55);
+    }
+
+    .rlink-wrap {
+      overflow: hidden;
+      height: 100%;
+      transform: translate(6px, -6px);
+      padding: 1px;
+      background: linear-gradient(to bottom, var(--gold), var(--gold-dim));
+      position: relative;
+      transition: all .3s var(--ease);
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    .rlink-outline {
+      position: absolute;
+      overflow: hidden;
+      inset: 0;
+      opacity: 0;
+      outline: none;
+      transition: all .4s var(--ease);
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    .rlink-outline::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      width: 110px;
+      height: 300px;
+      margin: auto;
+      background: linear-gradient(to right, transparent 0%, var(--gold-bright) 50%, transparent 100%);
+      animation: rlink-spin 3s linear infinite;
+      animation-play-state: paused;
+    }
+
+    .rlink-content {
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      position: relative;
+      height: 100%;
+      gap: 14px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      transition: all .3s var(--ease);
+      background:
+        radial-gradient(120% 90% at 100% 0%, rgba(201, 172, 103, .16), transparent 60%),
+        linear-gradient(168deg, #23242a, #15171b 70%);
+      box-shadow: inset 0 1px 0 rgba(230, 207, 149, .28), inset 0 -10px 18px rgba(0, 0, 0, .5);
+      clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+    }
+
+    .rlink-content::before {
+      content: '';
+      inset: 0;
+      position: absolute;
+      z-index: 10;
+      background: repeating-linear-gradient(115deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px);
+    }
+
+    .rlink-content::after {
+      content: 'RESONANCE LINK';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 5px;
+      text-align: center;
+      font: 400 7px/1 var(--latin);
+      letter-spacing: 3px;
+      color: var(--gold-dim);
+    }
+
+    .rlink-c1,
+    .rlink-c2 {
+      transition: all .3s var(--ease);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .rlink-c1 span,
+    .rlink-c2 span {
+      display: block;
+      color: transparent;
+      position: relative;
+    }
+
+    .rlink-c1 span {
+      animation: rlink-charIn 1.2s ease backwards calc(var(--i) * .03s);
+    }
+
+    .rlink-c1 span::before,
+    .rlink-c1 span::after,
+    .rlink-c2 span::after {
+      content: attr(data-label);
+      position: absolute;
+      color: var(--cream);
+      text-shadow: 0 0 10px rgba(201, 172, 103, .35);
+      left: 0;
+    }
+
+    .rlink-c1 span::before,
+    .rlink-c2 span::before {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+
+    .rlink-c2 {
+      position: absolute;
+      left: 92px;
+    }
+
+    .rlink-c2 span::after {
+      opacity: 1;
+      color: var(--gold-bright);
+      text-shadow: 0 0 18px rgba(201, 172, 103, .45);
+    }
+
+    .rlink-arrow {
+      z-index: 10;
+      animation: rlink-resetArrow .8s cubic-bezier(.7, -.5, .3, 1.2) forwards;
+    }
+
+    .rlink-arrow div,
+    .rlink-arrow div::before,
+    .rlink-arrow div::after {
+      height: 2px;
+      background-color: var(--gold-bright);
+    }
+
+    .rlink-arrow div::before,
+    .rlink-arrow div::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      transform-origin: center right;
+      width: 13px;
+      transition: all .3s var(--ease);
+    }
+
+    .rlink-arrow div {
+      position: relative;
+      width: 24px;
+      box-shadow: 0 0 8px rgba(201, 172, 103, .5);
+      transform: scale(.9);
+      background: linear-gradient(to right, var(--gold), var(--gold-bright));
+      animation: rlink-swing 1s ease-in-out infinite;
+      animation-play-state: paused;
+    }
+
+    .rlink-arrow div::before {
+      transform: rotate(44deg);
+      top: 1px;
+      animation: rlink-rot1 1s linear infinite;
+      animation-play-state: paused;
+    }
+
+    .rlink-arrow div::after {
+      bottom: 1px;
+      transform: rotate(316deg);
+      animation: rlink-rot2 1s linear infinite;
+      animation-play-state: paused;
+    }
+
+    .rlink-path {
+      position: absolute;
+      z-index: 12;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      stroke: var(--gold-bright);
+      stroke-dasharray: 150 480;
+      stroke-dashoffset: 150;
+      pointer-events: none;
+    }
+
+    .rlink-splash {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      stroke-dasharray: 60 60;
+      stroke-dashoffset: 60;
+      transform: translate(-17%, -31%);
+      stroke: var(--gold);
+    }
+
+    .rlink:hover .rlink-c1 span::before {
+      animation: rlink-charIn .7s ease calc(var(--i) * .03s);
+    }
+
+    .rlink:hover .rlink-c1 span::after {
+      opacity: 1;
+      animation: rlink-charOut .7s ease calc(var(--i) * .03s);
+    }
+
+    .rlink:hover .rlink-wrap {
+      transform: translate(8px, -8px);
+      background: linear-gradient(to bottom, var(--gold-bright), var(--gold-dim));
+    }
+
+    .rlink:hover .rlink-outline {
+      opacity: 1;
+    }
+
+    .rlink:hover .rlink-outline::before,
+    .rlink:hover .rlink-arrow div::before,
+    .rlink:hover .rlink-arrow div::after,
+    .rlink:hover .rlink-arrow div {
+      animation-play-state: running;
+    }
+
+    .rlink:active .rlink-bg::before {
+      opacity: .6;
+      box-shadow: -4px 4px 0 0 rgba(201, 172, 103, .12), -8px 8px 0 0 rgba(201, 172, 103, .07), 0 10px 24px rgba(0, 0, 0, .5);
+    }
+
+    .rlink:active .rlink-content {
+      box-shadow: inset 0 10px 16px rgba(0, 0, 0, .55), inset 0 -1px 0 rgba(230, 207, 149, .2);
+    }
+
+    .rlink:active .rlink-outline {
+      opacity: 0;
+    }
+
+    .rlink:active .rlink-wrap {
+      transform: translate(3px, -3px);
+    }
+
+    .rlink:active .rlink-splash {
+      animation: rlink-splash .8s cubic-bezier(.3, 0, 0, 1) forwards .05s;
+    }
+
+    .rlink:focus .rlink-path {
+      animation: rlink-path 1.6s ease forwards .2s;
+    }
+
+    .rlink:focus .rlink-arrow {
+      animation: rlink-arrow 1s cubic-bezier(.7, -.5, .3, 1.5) forwards;
+    }
+
+    .rlink-c2 span::after,
+    .rlink:focus .rlink-c1 span {
+      animation: rlink-charOut .5s ease forwards calc(var(--i) * .03s);
+    }
+
+    .rlink:focus .rlink-c2 span::after {
+      animation: rlink-charIn 1s ease backwards calc(var(--i) * .03s);
+    }
+
+    @keyframes rlink-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes rlink-charIn {
+      0% {
+        transform: translateY(50%);
+        opacity: 0;
+        filter: blur(20px);
+      }
+
+      20% {
+        transform: translateY(70%);
+        opacity: 1;
+      }
+
+      50% {
+        transform: translateY(-15%);
+        opacity: 1;
+        filter: blur(0);
+      }
+
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes rlink-charOut {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-70%);
+        opacity: 0;
+        filter: blur(3px);
+      }
+    }
+
+    @keyframes rlink-arrow {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        transform: translateX(60px);
+        opacity: 0;
+      }
+
+      51% {
+        transform: translateX(-190px);
+        opacity: 0;
+      }
+
+      100% {
+        transform: translateX(-118px);
+        opacity: 1;
+      }
+    }
+
+    @keyframes rlink-swing {
+      50% {
+        transform: translateX(5px) scale(.9);
+      }
+    }
+
+    @keyframes rlink-rot1 {
+      50% {
+        transform: rotate(30deg);
+      }
+
+      80% {
+        transform: rotate(55deg);
+      }
+    }
+
+    @keyframes rlink-rot2 {
+      50% {
+        transform: rotate(330deg);
+      }
+
+      80% {
+        transform: rotate(300deg);
+      }
+    }
+
+    @keyframes rlink-resetArrow {
+      0% {
+        transform: translateX(-118px);
+      }
+
+      100% {
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes rlink-path {
+      from {
+        stroke: var(--cream);
+      }
+
+      to {
+        stroke-dashoffset: -480;
+        stroke: var(--gold-bright);
+      }
+    }
+
+    @keyframes rlink-splash {
+      to {
+        stroke-dasharray: 2 60;
+        stroke-dashoffset: -60;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+
+    <h2>完整面板 FULL PANEL</h2>
+    <div class="panel">
+      <div class="titlebar">
+        <span class="diamond"></span>
+        <span class="tt"><b>共鸣终端</b><i>RESONANCE TERMINAL</i></span>
+        <button class="close" aria-label="关闭">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round">
+            <path d="M5 5l14 14M19 5L5 19" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="panel-body">
+        <div class="head">
+          <h1 id="hName">主体·甲</h1>
+          <div class="sub" id="hSub">RESONATOR / ACTIVE</div>
+          <div class="state"><s></s>参数即时同步 · 自动写入配置</div>
+        </div>
+
+        <!-- 项选择器 / Item picker -->
+        <section class="card">
+          <div class="card-head">
+            <span class="mk"></span><span class="zh">共鸣者</span>
+            <span class="ln"></span><span class="en">RESONATOR</span>
+          </div>
+          <div class="picker" id="picker"></div>
+        </section>
+
+        <!-- 读数 + 滑杆 + 分段控件 / Readout + slider + segmented -->
+        <section class="card">
+          <div class="card-head">
+            <span class="mk"></span><span class="zh">显形尺度</span>
+            <span class="ln"></span><span class="en">SCALE</span>
+          </div>
+          <div class="val-row">
+            <span class="readout" id="val">100<small>%</small></span>
+            <span class="hint">30 — 150</span>
+          </div>
+          <div class="slider-box">
+            <input id="scale" type="range" min="30" max="150" step="1" value="100">
+          </div>
+          <div class="ticks"><span>30</span><span>90</span><span>150</span></div>
+          <div class="seg">
+            <span class="pill"></span>
+            <button data-v="50">小</button>
+            <button data-v="75">中</button>
+            <button data-v="100">默认</button>
+            <button data-v="130">大</button>
+          </div>
+        </section>
+
+        <!-- 开关行，由节点分割线分隔 / Switch rows separated by a node divider -->
+        <section class="card">
+          <div class="row">
+            <span class="icoframe">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3c.9 2.6 2.5 4.2 5 5-2.5.8-4.1 2.4-5 5-.9-2.6-2.5-4.2-5-5 2.5-.8 4.1-2.4 5-5Z" />
+                <path
+                  d="M5 15c.4 1.3 1.2 2.1 2.5 2.5C6.2 17.9 5.4 18.7 5 20c-.4-1.3-1.2-2.1-2.5-2.5C3.8 17.1 4.6 16.3 5 15Z" />
+              </svg>
+            </span>
+            <span class="txt">
+              <div class="name">星光特效</div>
+              <div class="desc">周围环绕闪烁的粒子</div>
+            </span>
+            <button class="switch" role="switch" aria-checked="true" aria-label="星光特效"></button>
+          </div>
+          <div class="divider"></div>
+          <div class="row">
+            <span class="icoframe">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 20V10M10 20V4M16 20v-7M22 20v-4" />
+              </svg>
+            </span>
+            <span class="txt">
+              <div class="name">性能模式</div>
+              <div class="desc">空闲时降低刷新率</div>
+            </span>
+            <button class="switch" role="switch" aria-checked="false" aria-label="性能模式"></button>
+          </div>
+        </section>
+
+        <div class="foot">
+          <span class="dots"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          ESC TO CLOSE · DRAG TO MOVE
+          <span class="dots mirror"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+      </div>
+    </div>
+
+    <h2>独立组件 ISOLATED PIECES</h2>
+    <div class="panel">
+      <div class="panel-body" style="padding-top:16px">
+        <section class="card">
+          <div class="card-head">
+            <span class="mk"></span><span class="zh">节点与读数</span>
+            <span class="ln"></span><span class="en">NODES</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <span class="diamond"></span>
+            <span class="readout">42<small>°C</small></span>
+            <span class="dots"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="icoframe">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round">
+                <circle cx="12" cy="12" r="8" />
+                <path d="M12 8v4l3 2" />
+              </svg>
+            </span>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <h2>共鸣接入按钮 RESONANCE LINK BUTTON</h2>
+    <div class="panel">
+      <div class="panel-body" style="padding-top:16px">
+        <section class="card">
+          <div class="card-head">
+            <span class="mk"></span><span class="zh">共鸣接入</span>
+            <span class="ln"></span><span class="en">RESONANCE LINK</span>
+          </div>
+          <div class="rlink-stage">
+            <span class="diamond l"></span>
+            <span class="diamond r"></span>
+            <button class="rlink">
+              <div class="rlink-bg"></div>
+              <svg class="rlink-splash" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 342 208"
+                height="208" width="342">
+                <path stroke-linecap="round" stroke-width="3"
+                  d="M54.1054 99.7837C54.1054 99.7837 40.0984 90.7874 26.6893 97.6362C13.2802 104.485 1.5 97.6362 1.5 97.6362">
+                </path>
+                <path stroke-linecap="round" stroke-width="3"
+                  d="M285.273 99.7841C285.273 99.7841 299.28 90.7879 312.689 97.6367C326.098 104.486 340.105 95.4893 340.105 95.4893">
+                </path>
+                <path stroke-linecap="round" stroke-width="3" stroke-opacity="0.3"
+                  d="M281.133 64.9917C281.133 64.9917 287.96 49.8089 302.934 48.2295C317.908 46.6501 319.712 36.5272 319.712 36.5272">
+                </path>
+                <path stroke-linecap="round" stroke-width="3" stroke-opacity="0.3"
+                  d="M281.133 138.984C281.133 138.984 287.96 154.167 302.934 155.746C317.908 157.326 319.712 167.449 319.712 167.449">
+                </path>
+                <path stroke-linecap="round" stroke-width="3"
+                  d="M230.578 57.4476C230.578 57.4476 225.785 41.5051 236.061 30.4998C246.337 19.4945 244.686 12.9998 244.686 12.9998">
+                </path>
+                <path stroke-linecap="round" stroke-width="3"
+                  d="M230.578 150.528C230.578 150.528 225.785 166.471 236.061 177.476C246.337 188.481 244.686 194.976 244.686 194.976">
+                </path>
+                <path stroke-linecap="round" stroke-width="3" stroke-opacity="0.3"
+                  d="M170.392 57.0278C170.392 57.0278 173.89 42.1322 169.571 29.54C165.252 16.9478 168.751 2.05227 168.751 2.05227">
+                </path>
+                <path stroke-linecap="round" stroke-width="3" stroke-opacity="0.3"
+                  d="M170.392 150.948C170.392 150.948 173.89 165.844 169.571 178.436C165.252 191.028 168.751 205.924 168.751 205.924">
+                </path>
+                <path stroke-linecap="round" stroke-width="3"
+                  d="M112.609 57.4476C112.609 57.4476 117.401 41.5051 107.125 30.4998C96.8492 19.4945 98.5 12.9998 98.5 12.9998">
+                </path>
+                <path stroke-linecap="round" stroke-width="3"
+                  d="M112.609 150.528C112.609 150.528 117.401 166.471 107.125 177.476C96.8492 188.481 98.5 194.976 98.5 194.976">
+                </path>
+                <path stroke-linecap="round" stroke-width="3" stroke-opacity="0.3"
+                  d="M62.2941 64.9917C62.2941 64.9917 55.4671 49.8089 40.4932 48.2295C25.5194 46.6501 23.7159 36.5272 23.7159 36.5272">
+                </path>
+                <path stroke-linecap="round" stroke-width="3" stroke-opacity="0.3"
+                  d="M62.2941 145.984C62.2941 145.984 55.4671 161.167 40.4932 162.746C25.5194 164.326 23.7159 174.449 23.7159 174.449">
+                </path>
+              </svg>
+              <div class="rlink-wrap">
+                <svg class="rlink-path" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 221 42" height="42"
+                  width="221">
+                  <path stroke-linecap="round" stroke-width="3"
+                    d="M182.7 2 H211 L219 10 V32 L211 40 H10 L2 32 V10 L10 2 H47.9"></path>
+                </svg>
+                <div class="rlink-outline"></div>
+                <div class="rlink-content">
+                  <span class="rlink-c1">
+                    <span data-label="接" style="--i:1">接</span>
+                    <span data-label="入" style="--i:2">入</span>
+                    <span data-label="共" style="--i:3">共</span>
+                    <span data-label="鸣" style="--i:4">鸣</span>
+                  </span>
+                  <div class="rlink-arrow">
+                    <div></div>
+                  </div>
+                  <span class="rlink-c2">
+                    <span data-label="已" style="--i:1">已</span>
+                    <span data-label="同" style="--i:2">同</span>
+                    <span data-label="步" style="--i:3">步</span>
+                  </span>
+                </div>
+              </div>
+            </button>
+          </div>
+          <div class="foot">
+            <span class="dots"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            HOVER TO ENGAGE · CLICK TO SYNC
+            <span class="dots mirror"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          </div>
+        </section>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ===== 项选择器 / Item picker ===== */
+    const ITEMS = [
+      { id: 'a', name: '主体·甲', en: 'RESONATOR / ACTIVE', color: '#d9b45c', glyph: 'A' },
+      { id: 'b', name: '主体·青', en: 'RESONATOR / AZURE', color: '#5aa9d6', glyph: 'B' },
+      { id: 'c', name: '主体·赤', en: 'RESONATOR / CRIMSON', color: '#d16a5e', glyph: 'C' }
+    ];
+    const picker = document.getElementById('picker');
+    let cur = 'a';
+
+    function renderPicker() {
+      picker.innerHTML = '';
+      ITEMS.forEach((it) => {
+        const el = document.createElement('button');
+        el.className = 'item' + (it.id === cur ? ' active' : '');
+        el.style.setProperty('--c', it.color);   // 逐项底色；全局金色不受影响 / per-item tint; global gold unaffected
+        el.innerHTML =
+          '<span class="cn"></span><span class="cn"></span><span class="cn"></span><span class="cn"></span>' +
+          '<div class="thumb"><span>' + it.glyph + '</span></div>' +
+          '<div class="nm">' + it.name + '</div>';
+        el.onclick = () => {
+          cur = it.id;
+          document.documentElement.style.setProperty('--theme', it.color);
+          document.getElementById('hName').textContent = it.name;
+          document.getElementById('hSub').textContent = it.en;
+          renderPicker();
+        };
+        picker.appendChild(el);
+      });
+    }
+    renderPicker();
+
+    /* ===== 读数 + 滑杆 + 分段控件 / Readout + slider + segmented ===== */
+    const slider = document.getElementById('scale');
+    const val = document.getElementById('val');
+    const segBtns = Array.from(document.querySelectorAll('.seg button'));
+    const pill = document.querySelector('.seg .pill');
+
+    function render(pct) {
+      val.innerHTML = pct + '<small>%</small>';
+      slider.style.setProperty('--pct', ((pct - 30) / 120 * 100) + '%');
+      const i = segBtns.findIndex((b) => Number(b.dataset.v) === pct);
+      segBtns.forEach((b, n) => b.classList.toggle('active', n === i));
+      pill.style.opacity = i < 0 ? '0' : '1';
+      if (i >= 0) pill.style.setProperty('--i', i);
+    }
+    slider.addEventListener('input', () => render(Number(slider.value)));
+    segBtns.forEach((b) => b.addEventListener('click', () => {
+      slider.value = b.dataset.v;
+      render(Number(b.dataset.v));
+    }));
+    render(100);
+
+    /* ===== 开关 / Switches ===== */
+    document.querySelectorAll('.switch').forEach((s) => {
+      s.onclick = () => s.setAttribute('aria-checked', s.getAttribute('aria-checked') !== 'true');
+    });
+  </script>
+</body>
+
+</html>
