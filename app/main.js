@@ -995,6 +995,12 @@ function createWindow() {
         await js("(()=>{[...document.querySelectorAll('.modal-actions .btn')].find(x=>x.textContent.includes('关闭')).click();})()");
         await new Promise((r) => setTimeout(r, 400));
 
+        // 作者主页入口：必须紧跟打赏按钮，且真开一次验证通路
+        const authorPos = await js('(()=>{const d=document.querySelector(".donate-entry"); const a=document.querySelector(".author-entry");' +
+          'return !!a && !!d && d.nextElementSibling===a && a.title==="https://ktboy.github.io/sh-design/guide/about";})()');
+        const authorOpen = await js('window.api.openExternal("https://ktboy.github.io/sh-design/guide/about")');
+        log('作者入口位置=' + authorPos + ' 打开结果=' + JSON.stringify(authorOpen));
+
         const importBtn = await js("[...document.querySelectorAll('.toolbar-actions .btn')].some(x=>x.textContent.includes('导入 MOD'))");
         await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('设置')).click();})()");
         await new Promise((r) => setTimeout(r, 500));
@@ -1015,6 +1021,7 @@ function createWindow() {
         await shot('pm7-extras-grid.png');
 
         console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
+          authorPos && authorOpen.ok === true &&
           (linkOpen === null || linkOpen.ok === true) &&
           stats.total === stats.uniq && stats.imgs === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }

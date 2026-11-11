@@ -124,6 +124,11 @@ const app = createApp({
         if (r && !r.ok) showToast(r.msg || '打开链接失败', 'error');
       });
     }
+    function openAuthor() {
+      window.api.openExternal('https://ktboy.github.io/sh-design/guide/about').then((r) => {
+        if (r && !r.ok) showToast(r.msg || '打开链接失败', 'error');
+      });
+    }
     // 文件夹导入：递归找 .pak 入库，按内容自动去重，已有 MOD 只合并预览/签名
     async function importFolder() {
       try {
@@ -223,7 +228,7 @@ const app = createApp({
       tabIcon, countInstalled, refresh,
       install, uninstall, uninstallAll, del, setPreview, resign, importMods, importFolder, launch,
       saveSettings, autoDetect, pickRoot, openPath, winMin, winClose,
-      extras, updateOpen, donateOpen, openUpdate, openDonate, openUpdateUrl,
+      extras, updateOpen, donateOpen, openUpdate, openDonate, openUpdateUrl, openAuthor,
     };
   },
 });
