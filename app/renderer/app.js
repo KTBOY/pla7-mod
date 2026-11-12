@@ -86,7 +86,8 @@ const app = createApp({
     function filteredLibrary(k) {
       if (!scanData.value) return [];
       const list = scanData.value.games[k].library;
-      if (filter.value === '全部') return list;
+      // 「全部」只看服装+武器，功能性 MOD 归「其他」单独看，避免混进默认列表
+      if (filter.value === '全部') return list.filter((m) => (m.category || '服装') !== '其他');
       return list.filter((m) => (m.category || '服装') === filter.value);
     }
     function tabIcon(k) { return ICONS[k] || ICONS.main; }

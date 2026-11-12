@@ -1198,8 +1198,9 @@ function createWindow() {
         await new Promise((r) => setTimeout(r, 400));
         const stats = await js('(()=>{const cards=[...document.querySelectorAll(".section")[1].querySelectorAll(".card")];' +
           'const names=cards.map(c=>c.querySelector(".name").textContent.trim());' +
-          'return {total:cards.length, uniq:new Set(names).size, imgs:cards.filter(c=>c.querySelector(".preview img")).length, ph:cards.filter(c=>c.querySelector(".preview .ph")).length};})()');
-        log('MOD库 卡片=' + stats.total + ' 去重后=' + stats.uniq + ' 有预览图=' + stats.imgs + ' 无图占位=' + stats.ph);
+          'return {total:cards.length, uniq:new Set(names).size, imgs:cards.filter(c=>c.querySelector(".preview img")).length, ph:cards.filter(c=>c.querySelector(".preview .ph")).length,' +
+          'otherInAll:cards.filter(c=>[...c.querySelectorAll(".tag")].some(t=>t.textContent.trim()==="其他")).length};})()');
+        log('MOD库(全部) 卡片=' + stats.total + ' 去重后=' + stats.uniq + ' 有预览图=' + stats.imgs + ' 无图占位=' + stats.ph + ' 混入其他=' + stats.otherInAll);
         const restartHint = await js('(()=>{const s=document.querySelector(".section-title small"); return !!s && s.textContent.includes("重启游戏");})()');
         log('重启提示常驻=' + restartHint);
         await js("(()=>{const s=document.querySelector('.scroll'); s.scrollTop=s.scrollHeight;})()");
@@ -1211,7 +1212,7 @@ function createWindow() {
           openGuard.ok === false && openEmpty.ok === false &&
           wiringOk && pageErr === 0 && refreshStable && (!hasLib || (hoverShot && pressShot && lbEnter)) && restartHint &&
           (linkOpen === null || linkOpen.ok === true) &&
-          segTabs === '全部,服装,武器,其他' && otherStats.allOther &&
+          segTabs === '全部,服装,武器,其他' && otherStats.allOther && stats.otherInAll === 0 &&
           stats.total === stats.uniq && stats.imgs + stats.ph === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }
       app.quit();
