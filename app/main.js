@@ -270,7 +270,7 @@ async function buildMod(dir, pakPath) {
 // 角色槽位归一：中文名、编号别名（女1=月清疏 等）、拼音都归到同一角色，
 // 避免同一位置的 MOD 因名字写法不同被判成不同槽而同时启用
 const CHAR_SLOTS = [
-  { canon: '月清疏', zh: /月清疏|女1/, py: /^(yqs|yueqingshu)/ },
+  { canon: '月清疏', zh: /月清疏|女1|女主/, py: /^(yqs|yueqingshu)/ },
   { canon: '修吾', zh: /修吾|男1/, py: /^(xw$|xiuwu)/ },
   { canon: '白茉晴', zh: /白茉晴|女2/, py: /^(bmq|baimoqing)/ },
   { canon: '桑游', zh: /桑游|男2/, py: /^(sy$|sangyou)/ },
@@ -291,8 +291,8 @@ function resolveRole(name, dirName) {
   return matchRole(name) || matchRole(dirName);
 }
 
-// 功能性 MOD 关键词：Remove*（去裙/去紧身衣等）、nude，及中文功能/裸体谐音（锅体=果体）
-const FUNC_MOD_RE = /nude|remove|功能|去裙|裸体|果体|锅体/i;
+// 功能性 MOD 关键词：Remove*（去裙/去紧身衣等）、nude，及中文功能/裸体谐音（锅体=果体）、光腿
+const FUNC_MOD_RE = /nude|remove|功能|去裙|裸体|果体|锅体|光腿/i;
 
 // 从文件名启发式分类，并计算"槽位"：同槽位的 mod 互相覆盖（如同一角色的两套服装），
 // 不同槽位可以同时启用（如 女1服装 + 碧海剑武器）
@@ -638,6 +638,7 @@ async function importFromDir(srcDir, libraryDir) {
     try {
       const base = u.pakPath.slice(0, -4);
       const sigSrc = fs.existsSync(base + '.sig') ? base + '.sig' : null;
+      const txtSrc = fs.existsSync(base + '.txt') ? base + '.txt' : null;
       let previewSrc = null;
       for (const ext of IMAGE_EXTS) {
         if (fs.existsSync(base + ext)) { previewSrc = base + ext; break; }
@@ -661,6 +662,10 @@ async function importFromDir(srcDir, libraryDir) {
           await fsp.copyFile(previewSrc, dest).catch(() => {});
           existing.preview = dest;
         }
+        if (!existing.descPath && txtSrc) {
+          await fsp.copyFile(txtSrc, eBase + '.txt').catch(() => {});
+          existing.descPath = eBase + '.txt';
+        }
         continue;
       }
       const folderName = path.resolve(u.dir) === srcRoot ? path.basename(srcRoot) : path.basename(u.dir);
@@ -674,10 +679,12 @@ async function importFromDir(srcDir, libraryDir) {
       await fsp.copyFile(u.pakPath, destPak);
       if (sigSrc) await fsp.copyFile(sigSrc, destBase + '.sig').catch(() => {});
       if (previewSrc) await fsp.copyFile(previewSrc, destBase + path.extname(previewSrc).toLowerCase()).catch(() => {});
+      if (txtSrc) await fsp.copyFile(txtSrc, destBase + '.txt').catch(() => {});
       byHash.set(h, {
         pakPath: destPak,
         sigPath: sigSrc ? destBase + '.sig' : null,
         preview: previewSrc ? destBase + path.extname(previewSrc).toLowerCase() : null,
+        descPath: txtSrc ? destBase + '.txt' : null,
       });
       result.added++;
     } catch (e) {
@@ -785,18 +792,22 @@ async function runDedupSelfTest() {
     const srcRoot = path.join(tmp, 'src');
     w(path.join(srcRoot, '红裙MOD', 'hq.pak'), 'PAK-HQ');
     w(path.join(srcRoot, '红裙MOD', 'hq.sig'), 'SIG-HQ');
+    w(path.join(srcRoot, '红裙MOD', 'hq.txt'), '红裙说明');
     w(path.join(srcRoot, '红裙MOD', 'cover任意名.jpg'), 'IMG-HQ');
     w(path.join(srcRoot, '~mods', 'bad.pak'), 'SHOULD-NOT-IMPORT');
     let r = await importFromDir(srcRoot, libDir);
     assert(r.added === 1 && r.merged === 0 && r.errors.length === 0, '首次导入 added=1 merged=0 无错误');
     assert(fs.existsSync(path.join(libDir, '红裙MOD', 'hq.jpg')), '任意命名预览图已归一为 pak 基名');
+    assert(fs.existsSync(path.join(libDir, '红裙MOD', 'hq.txt')), '导入携带同名 txt 说明');
     assert(!fs.existsSync(path.join(libDir, '~mods')), '~mods 目录被跳过');
 
-    // 4) 重复导入同一目录 → 只合并预览，不新增 pak
+    // 4) 重复导入同一目录 → 只合并预览/说明，不新增 pak
     fs.rmSync(path.join(libDir, '红裙MOD', 'hq.jpg'));
+    fs.rmSync(path.join(libDir, '红裙MOD', 'hq.txt'));
     r = await importFromDir(srcRoot, libDir);
     assert(r.added === 0 && r.merged === 1, '重复导入 added=0 merged=1');
     assert(fs.existsSync(path.join(libDir, '红裙MOD', 'hq.jpg')), '预览图已合并到既有条目');
+    assert(fs.existsSync(path.join(libDir, '红裙MOD', 'hq.txt')), '说明已合并到既有条目');
     lib = await scanMods(libDir);
     assert(lib.length === 1, '库仍只有 1 张卡');
 
@@ -844,6 +855,10 @@ async function runDedupSelfTest() {
     assert(cls('BaiMoQing_P.pak', nudeDir).slot === slotOf('刀战学院_女2_服装1白色.pak'), '果体MOD与同角色服装同槽互斥');
     assert(cls('YueQingShu_P.pak', nudeDir).slot === slotOf('RemoveSkirtMod.pak', 'YueQingshu_Mod2b_RemoveSkirt'), '同角色两个功能性MOD互斥');
     assert(cls('SomeFunc.pak', '锅体').category === '其他', '锅体(果体谐音)目录归其他');
+    assert(cls('RemoveTights_P.pak', '女主光腿正式版MOD').category === '其他', '光腿目录归其他');
+    assert(cls('光腿.pak').category === '其他', '光腿关键词归其他');
+    assert(cls('RemoveTights_P.pak', '女主光腿正式版MOD').role === '月清疏', '女主解析为月清疏');
+    assert(cls('RemoveTights_P.pak', '女主光腿正式版MOD').slot === slotOf('RemoveSkirtMod.pak', 'YueQingshu_Mod2b_RemoveSkirt'), '光腿与去裙同槽互斥');
     assert(cls('月清疏mod赵灵儿套.pak').category === '服装', '普通服装不受影响');
     assert(cls('刀战学院_武器_碧海剑_赤红.pak').category === '武器', '武器分类不受影响');
 
@@ -1258,6 +1273,8 @@ function createWindow() {
         log('筛选栏=[' + segTabs + '] 其他页卡片=' + otherStats.n + ' 全部标其他=' + otherStats.allOther + ' ' + JSON.stringify(otherStats.names));
         const rsDesc = await js('(()=>{const c=[...document.querySelectorAll(".card")].find(x=>x.querySelector(".name").textContent.trim()==="RemoveSkirtMod"); return c?((c.querySelector(".desc")||{}).textContent||"(无)"):"(无卡片)";})()');
         log('RemoveSkirtMod 说明=' + rsDesc);
+        const rtDesc = await js('(()=>{const c=[...document.querySelectorAll(".card")].find(x=>x.querySelector(".name").textContent.trim()==="RemoveTights_P"); return c?((c.querySelector(".desc")||{}).textContent||"(无)"):"(无卡片)";})()');
+        log('RemoveTights_P 说明=' + rtDesc);
         await shot('pm7-extras-other-filter.png');
         await js("(()=>{[...document.querySelectorAll('.seg button')].find(b=>b.textContent.trim()==='全部').click();})()");
         await new Promise((r) => setTimeout(r, 400));
@@ -1294,7 +1311,7 @@ function createWindow() {
           lockedTabs === '全部,服装,武器' && lockedNoOther && lockedGuide && privacyLocked && wrongApi.ok === false &&
           pwdModalOpen && wrongUi && unlockedState && unlockedGuide &&
           segTabs === '全部,服装,武器,其他' && otherStats.allOther && stats.otherInAll === 0 &&
-          (stats.total === 0 || (otherStats.n > 0 && rsDesc === '不要裙子')) &&
+          (stats.total === 0 || (otherStats.n > 0 && rsDesc === '不要裙子' && rtDesc === '光腿')) &&
           relockTabs === '全部,服装,武器' && otherGone &&
           stats.total === stats.uniq && stats.imgs + stats.ph === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }
