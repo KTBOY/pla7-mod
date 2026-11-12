@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('api', {
   openPath: (p) => ipcRenderer.invoke('open-path', p),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getExtras: () => ipcRenderer.invoke('get-extras'),
+  unlockOther: (pwd) => ipcRenderer.invoke('unlock-other', pwd),
+  lockOther: () => ipcRenderer.invoke('lock-other'),
   readImage: (p) => ipcRenderer.invoke('read-image', p),
   winMin: () => ipcRenderer.send('win-min'),
   winClose: () => ipcRenderer.send('win-close'),

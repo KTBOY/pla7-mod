@@ -8,12 +8,18 @@ const os = require('os');
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const LIBRARY_DIR = path.join(__dirname, 'library');
 
+// 「其他」（功能性）MOD 默认隐藏，设置里输密码开启；密码可在 config.otherPassword 覆盖
+const OTHER_PWD_DEFAULT = '88888888';
+// PM_EXTRAS 只读自检的内存配置态：unlock/lock 不写盘，避免污染真实/分发 config
+let testCfg = null;
+
 const DEFAULT_CONFIG = {
   games: {
     main: { name: '仙剑奇侠传七（主游戏）', paksDir: '', exe: '' },
     dlc: { name: '仙剑奇侠传七 DLC', paksDir: '', exe: '' },
   },
   libraryDir: path.join(__dirname, '皮肤'),
+  otherEnabled: false,
 };
 
 /* ---------- 游戏根目录自动检测 ----------
@@ -107,6 +113,7 @@ function deriveGamePaths(root) {
 
 // 旧版默认库路径迁移到新的「皮肤」库；游戏路径缺失时自动检测
 function loadConfig() {
+  if (process.env.PM_EXTRAS && testCfg) return JSON.parse(JSON.stringify(testCfg));
   let cfg;
   try {
     cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
@@ -118,6 +125,7 @@ function loadConfig() {
                 dlc: { ...DEFAULT_CONFIG.games.dlc, ...(cfg.games || {}).dlc } };
   cfg.libraryDir = cfg.libraryDir || DEFAULT_CONFIG.libraryDir;
   cfg.updateUrl = typeof cfg.updateUrl === 'string' ? cfg.updateUrl : '';
+  cfg.otherEnabled = !!cfg.otherEnabled;
   return cfg;
 }
 
@@ -428,7 +436,7 @@ ipcMain.handle('pick-root', async () => {
 ipcMain.handle('scan', async () => {
   const cfg = ensureGamePaths(loadConfig());
   await fsp.mkdir(cfg.libraryDir, { recursive: true });
-  const result = { libraryDir: cfg.libraryDir, games: {} };
+  const result = { libraryDir: cfg.libraryDir, otherEnabled: !!cfg.otherEnabled, games: {} };
   for (const key of Object.keys(cfg.games)) {
     const g = cfg.games[key];
     const modsDir = path.join(g.paksDir, '~mods');
@@ -442,6 +450,23 @@ ipcMain.handle('scan', async () => {
     };
   }
   return result;
+});
+
+// 「其他」功能密码门：开启需校验密码（默认 88888888），隐藏无需密码
+ipcMain.handle('unlock-other', async (_e, pwd) => {
+  const cfg = loadConfig();
+  if (String(pwd == null ? '' : pwd) !== String(cfg.otherPassword || OTHER_PWD_DEFAULT)) {
+    return { ok: false, msg: '密码错误' };
+  }
+  cfg.otherEnabled = true;
+  if (process.env.PM_EXTRAS) testCfg = cfg; else await saveConfig(cfg);
+  return { ok: true };
+});
+ipcMain.handle('lock-other', async () => {
+  const cfg = loadConfig();
+  cfg.otherEnabled = false;
+  if (process.env.PM_EXTRAS) testCfg = cfg; else await saveConfig(cfg);
+  return { ok: true };
 });
 
 // 多 MOD 共存：只停用与目标 mod 同槽位的已启用 mod（同一角色换装互斥，武器与服装互不干扰）
@@ -1041,6 +1066,10 @@ function createWindow() {
   //（截图写入系统临时目录，全程不触碰 MOD 库与 config）
   if (process.env.PM_EXTRAS) {
     win.hide();
+    // 自检固定从「默认隐藏」态出发：内存配置覆盖，unlock/lock 全程不写盘
+    testCfg = loadConfig(); testCfg.otherEnabled = false;
+    // 源码态跑自检会有开发期 CSP 警告（打包后不存在），不计入页面错误
+    process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
     const ew = new BrowserWindow({
       width: 1280, height: 820, show: false, frame: false,
       webPreferences: { preload: path.join(__dirname, 'preload.js'), offscreen: true },
@@ -1180,11 +1209,47 @@ function createWindow() {
         log('导入按钮=' + importBtn + ' 设置夸克链接已隐藏=' + urlHidden);
         await shot('pm7-extras-settings.png');
 
-        // 回 MOD 页统计卡片：去重后应无同名重复、预览图齐全
+        // 「其他」密码门：默认隐藏 → 错密码拒绝 → 正确密码开启 → 一键收回（内存态，不写盘）
         await js("(()=>{document.querySelectorAll('.nav-item')[0].click();})()");
+        await new Promise((r) => setTimeout(r, 800));
+        const lockedTabs = await js("[...document.querySelectorAll('.seg button')].map(b=>b.textContent.trim()).join(',')");
+        const lockedNoOther = await js('(()=>{const cards=[...document.querySelectorAll(".section .card")];' +
+          'return cards.every(c=>![...c.querySelectorAll(".tag")].some(t=>t.textContent.trim()==="其他"));})()');
+        const lockedGuide = await js('!document.querySelector(".dir-tip").textContent.includes("去裙")');
+        log('默认隐藏 页签=[' + lockedTabs + '] 生效+库均无其他=' + lockedNoOther + ' 指引不泄露=' + lockedGuide);
+        await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('设置')).click();})()");
+        await new Promise((r) => setTimeout(r, 400));
+        const privacyLocked = await js('(()=>{const c=[...document.querySelectorAll(".set-card")].find(x=>x.textContent.includes("RESTRICTED"));' +
+          'return !!c && c.textContent.includes("当前：已隐藏") && [...c.querySelectorAll(".btn")].some(b=>b.textContent.includes("开启其他功能"));})()');
+        const wrongApi = await js('window.api.unlockOther("00000000")');
+        log('隐私卡默认隐藏=' + privacyLocked + ' 错密码(API)=' + JSON.stringify(wrongApi));
+        // UI 弹窗：先输错密码看报错，再输对开启
+        await js("(()=>{[...document.querySelectorAll('.set-card .btn')].find(b=>b.textContent.includes('开启其他功能')).click();})()");
+        await new Promise((r) => setTimeout(r, 500));
+        const pwdModalOpen = await js('!!document.querySelector(".modal-mask input[type=password]")');
+        const setPwd = (v) => js('(()=>{const i=document.querySelector(".modal-mask input[type=password]");' +
+          'const set=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,"value").set; set.call(i,' + JSON.stringify(v) + ');' +
+          'i.dispatchEvent(new Event("input",{bubbles:true}));})()');
+        await setPwd('00000000');
+        await js("(()=>{[...document.querySelectorAll('.modal-actions .btn')].find(b=>b.textContent.includes('确认开启')).click();})()");
+        await new Promise((r) => setTimeout(r, 300));
+        const wrongUi = await js('(()=>{const e=document.querySelector(".modal-mask .modal-hint");' +
+          'return !!e && e.textContent.includes("密码错误") && !!document.querySelector(".modal-mask input[type=password]");})()');
+        await shot('pm7-extras-pwd-wrong.png');
+        await setPwd('88888888');
+        await js("(()=>{[...document.querySelectorAll('.modal-actions .btn')].find(b=>b.textContent.includes('确认开启')).click();})()");
         await new Promise((r) => setTimeout(r, 1500));
-        // 「其他」分类筛选：筛选栏四项齐全，点「其他」后卡片必须全部带其他标签
+        const unlockedState = await js('(()=>{const c=[...document.querySelectorAll(".set-card")].find(x=>x.textContent.includes("RESTRICTED"));' +
+          'return !document.querySelector(".modal-mask input[type=password]") && !!c && c.textContent.includes("当前：已开启");})()');
+        log('密码弹窗=' + pwdModalOpen + ' 错密码(UI)报错=' + wrongUi + ' 正确密码开启=' + unlockedState);
+        await shot('pm7-extras-unlocked-settings.png');
+
+        // 回 MOD 页统计卡片：开启后筛选栏四项齐全，「其他」页全部带其他标签，「全部」不混入其他
+        await js("(()=>{document.querySelectorAll('.nav-item')[0].click();})()");
+        await new Promise((r) => setTimeout(r, 1200));
         const segTabs = await js("[...document.querySelectorAll('.seg button')].map(b=>b.textContent.trim()).join(',')");
+        const unlockedGuide = await js('document.querySelector(".dir-tip").textContent.includes("去裙")');
+        log('开启后指引恢复=' + unlockedGuide);
         await js("(()=>{[...document.querySelectorAll('.seg button')].find(b=>b.textContent.trim()==='其他').click();})()");
         await new Promise((r) => setTimeout(r, 400));
         const otherStats = await js('(()=>{const cards=[...document.querySelectorAll(".section")[1].querySelectorAll(".card")];' +
@@ -1207,12 +1272,30 @@ function createWindow() {
         await new Promise((r) => setTimeout(r, 600));
         await shot('pm7-extras-grid.png');
 
+        // 隐藏无需密码：设置里一键收回，页签与卡片立即回到默认三项
+        await js("(()=>{[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.includes('设置')).click();})()");
+        await new Promise((r) => setTimeout(r, 400));
+        await js("(()=>{[...document.querySelectorAll('.set-card .btn')].find(b=>b.textContent.includes('隐藏其他功能')).click();})()");
+        await new Promise((r) => setTimeout(r, 1500));
+        await js("(()=>{document.querySelectorAll('.nav-item')[0].click();})()");
+        await new Promise((r) => setTimeout(r, 800));
+        const relockTabs = await js("[...document.querySelectorAll('.seg button')].map(b=>b.textContent.trim()).join(',')");
+        const otherGone = await js('(()=>{const cards=[...document.querySelectorAll(".section .card")];' +
+          'return cards.every(c=>![...c.querySelectorAll(".tag")].some(t=>t.textContent.trim()==="其他")) &&' +
+          '!document.querySelector(".dir-tip").textContent.includes("去裙");})()');
+        log('重新隐藏 页签=[' + relockTabs + '] 生效+库均无其他=' + otherGone);
+        await shot('pm7-extras-relocked.png');
+
         console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
           authorPos && authorOpen.ok === true &&
           openGuard.ok === false && openEmpty.ok === false &&
           wiringOk && pageErr === 0 && refreshStable && (!hasLib || (hoverShot && pressShot && lbEnter)) && restartHint &&
           (linkOpen === null || linkOpen.ok === true) &&
+          lockedTabs === '全部,服装,武器' && lockedNoOther && lockedGuide && privacyLocked && wrongApi.ok === false &&
+          pwdModalOpen && wrongUi && unlockedState && unlockedGuide &&
           segTabs === '全部,服装,武器,其他' && otherStats.allOther && stats.otherInAll === 0 &&
+          (stats.total === 0 || (otherStats.n > 0 && rsDesc === '不要裙子')) &&
+          relockTabs === '全部,服装,武器' && otherGone &&
           stats.total === stats.uniq && stats.imgs + stats.ph === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }
       app.quit();

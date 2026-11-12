@@ -1,4 +1,4 @@
-const { createApp, ref, reactive, computed, onMounted, defineComponent } = Vue;
+const { createApp, ref, reactive, computed, onMounted, defineComponent, watch } = Vue;
 
 /* ---------- 描边图标（内联 SVG，无 emoji） ---------- */
 const ICONS = {
@@ -68,14 +68,44 @@ const app = createApp({
 
     const gameKeys = ['main', 'dlc'];
     const filter = ref('全部');
-    const filterIndex = computed(() => ['全部', '服装', '武器', '其他'].indexOf(filter.value));
+    // 「其他」功能密码门：默认隐藏，设置里输密码开启后才显示页签与卡片
+    const otherOn = computed(() => !!(scanData.value && scanData.value.otherEnabled));
+    const filterTabs = computed(() => otherOn.value ? ['全部', '服装', '武器', '其他'] : ['全部', '服装', '武器']);
+    const filterIndex = computed(() => filterTabs.value.indexOf(filter.value));
+    const isOther = (m) => (m.category || '服装') === '其他';
+    function libraryList(k) {
+      if (!scanData.value) return [];
+      const l = scanData.value.games[k].library;
+      return otherOn.value ? l : l.filter((m) => !isOther(m));
+    }
+    function installedList(k) {
+      if (!scanData.value) return [];
+      const l = scanData.value.games[k].installed;
+      return otherOn.value ? l : l.filter((m) => !isOther(m));
+    }
     const totalLibrary = computed(() => scanData.value
-      ? scanData.value.games.main.library.length + scanData.value.games.dlc.library.length : 0);
+      ? libraryList('main').length + libraryList('dlc').length : 0);
     const totalInstalled = computed(() => scanData.value
-      ? scanData.value.games.main.installed.length + scanData.value.games.dlc.installed.length : 0);
+      ? installedList('main').length + installedList('dlc').length : 0);
     const extras = reactive({ version: '', updateUrl: '', donateQr: null });
     const updateOpen = ref(false);
     const donateOpen = ref(false);
+    const pwdOpen = ref(false);
+    const pwdInput = ref('');
+    const pwdErr = ref('');
+    function openUnlock() { pwdInput.value = ''; pwdErr.value = ''; pwdOpen.value = true; }
+    async function confirmUnlock() {
+      const r = await window.api.unlockOther(pwdInput.value);
+      if (r && r.ok) { pwdOpen.value = false; showToast('其他功能已开启'); await refresh(); }
+      else pwdErr.value = (r && r.msg) || '密码错误';
+    }
+    async function lockOther() {
+      await window.api.lockOther();
+      if (filter.value === '其他') filter.value = '全部';
+      showToast('其他功能已隐藏');
+      await refresh();
+    }
+    watch(otherOn, (on) => { if (!on && filter.value === '其他') filter.value = '全部'; });
     const zoomMod = ref(null);       // 大图预览的 mod
     const zoomUrl = ref(null);
     async function openZoom(mod) {
@@ -84,15 +114,14 @@ const app = createApp({
     }
     function closeZoom() { zoomMod.value = null; zoomUrl.value = null; }
     function filteredLibrary(k) {
-      if (!scanData.value) return [];
-      const list = scanData.value.games[k].library;
+      const list = libraryList(k);
       // 「全部」只看服装+武器，功能性 MOD 归「其他」单独看，避免混进默认列表
-      if (filter.value === '全部') return list.filter((m) => (m.category || '服装') !== '其他');
+      if (filter.value === '全部') return list.filter((m) => !isOther(m));
       return list.filter((m) => (m.category || '服装') === filter.value);
     }
     function tabIcon(k) { return ICONS[k] || ICONS.main; }
     function countInstalled(k) {
-      return scanData.value ? scanData.value.games[k].installed.length : 0;
+      return installedList(k).length;
     }
 
     let refreshQueued = false;
@@ -231,12 +260,14 @@ const app = createApp({
 
     return {
       cfg, scanData, tab, loading, toast, gameKeys, filter, filterIndex, filteredLibrary,
+      otherOn, filterTabs, libraryList, installedList,
       totalLibrary, totalInstalled,
       zoomMod, zoomUrl, openZoom, closeZoom,
       tabIcon, countInstalled, refresh,
       install, uninstall, uninstallAll, del, setPreview, resign, importMods, importFolder, launch,
       saveSettings, autoDetect, pickRoot, openPath, winMin, winClose,
       extras, updateOpen, donateOpen, openUpdate, openDonate, openUpdateUrl, openAuthor,
+      pwdOpen, pwdInput, pwdErr, openUnlock, confirmUnlock, lockOther,
     };
   },
 });
