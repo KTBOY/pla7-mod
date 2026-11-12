@@ -1275,6 +1275,8 @@ function createWindow() {
         log('RemoveSkirtMod 说明=' + rsDesc);
         const rtDesc = await js('(()=>{const c=[...document.querySelectorAll(".card")].find(x=>x.querySelector(".name").textContent.trim()==="RemoveTights_P"); return c?((c.querySelector(".desc")||{}).textContent||"(无)"):"(无卡片)";})()');
         log('RemoveTights_P 说明=' + rtDesc);
+        await js("(()=>{const s=document.querySelector('.scroll'); s.scrollTop=s.scrollHeight;})()");
+        await new Promise((r) => setTimeout(r, 400));
         await shot('pm7-extras-other-filter.png');
         await js("(()=>{[...document.querySelectorAll('.seg button')].find(b=>b.textContent.trim()==='全部').click();})()");
         await new Promise((r) => setTimeout(r, 400));
