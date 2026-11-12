@@ -163,15 +163,26 @@ const app = createApp({
         if (r && !r.ok) showToast(r.msg || '打开链接失败', 'error');
       });
     }
-    // 文件夹导入：递归找 .pak 入库，按内容自动去重，已有 MOD 只合并预览/签名
-    async function importFolder() {
+    // 导入引导弹窗：格式说明 + 文件夹/.pak 双入口，结果在弹窗内展示
+    const importOpen = ref(false);
+    const importBusy = ref(false);
+    const importResult = ref(null);
+    function openImport() { importResult.value = null; importOpen.value = true; }
+    async function runImport(kind) {
+      if (importBusy.value) return;
+      importBusy.value = true;
       try {
-        const r = await window.api.importFolder();
-        if (!r || !r.ok) { if (r && r.msg) showToast(r.msg, 'error'); return; }
-        const err = r.errors && r.errors.length ? `，失败 ${r.errors.length} 个` : '';
-        showToast(`导入完成：新增 ${r.added} · 合并 ${r.merged}${err}`);
-        refresh();
+        const r = kind === 'folder' ? await window.api.importFolder() : await window.api.importMods();
+        if (r && r.ok) {
+          importResult.value = {
+            added: r.added != null ? r.added : (r.count || 0),
+            merged: r.merged != null ? r.merged : (r.skipped || 0),
+            errors: r.errors || [],
+          };
+          refresh();
+        } else if (r && r.msg) showToast(r.msg, 'error');
       } catch (e) { showToast('导入失败：' + e.message, 'error'); }
+      importBusy.value = false;
     }
 
     async function install(mod, gameKey) {
@@ -210,10 +221,6 @@ const app = createApp({
         if (r.ok) { showToast('预览图已设置'); }
       } catch (e) { showToast('设置失败：' + e.message, 'error'); return; }
       refresh();
-    }
-    async function importMods() {
-      const r = await window.api.importMods();
-      if (r.ok) { showToast(`已导入 ${r.count} 个 MOD`); refresh(); }
     }
     async function launch(gameKey) {
       const r = await window.api.launchGame({ gameKey });
@@ -264,7 +271,8 @@ const app = createApp({
       totalLibrary, totalInstalled,
       zoomMod, zoomUrl, openZoom, closeZoom,
       tabIcon, countInstalled, refresh,
-      install, uninstall, uninstallAll, del, setPreview, resign, importMods, importFolder, launch,
+      install, uninstall, uninstallAll, del, setPreview, resign, launch,
+      importOpen, importBusy, importResult, openImport, runImport,
       saveSettings, autoDetect, pickRoot, openPath, winMin, winClose,
       extras, updateOpen, donateOpen, openUpdate, openDonate, openUpdateUrl, openAuthor,
       pwdOpen, pwdInput, pwdErr, openUnlock, confirmUnlock, lockOther,

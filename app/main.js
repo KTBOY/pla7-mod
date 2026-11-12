@@ -589,10 +589,14 @@ ipcMain.handle('import-mods', async () => {
           }
         }
       }
+      if (!existing.descPath && fs.existsSync(base + '.txt')) {
+        await fsp.copyFile(base + '.txt', existing.pakPath.replace(/\.pak$/i, '') + '.txt').catch(() => {});
+        existing.descPath = base + '.txt';
+      }
       continue;
     }
     await fsp.copyFile(p, path.join(cfg.libraryDir, path.basename(p)));
-    for (const ext of ['.sig', ...IMAGE_EXTS]) {
+    for (const ext of ['.sig', '.txt', ...IMAGE_EXTS]) {
       const src = base + ext;
       if (fs.existsSync(src)) {
         await fsp.copyFile(src, path.join(cfg.libraryDir, path.basename(base) + ext)).catch(() => {});
@@ -1146,6 +1150,31 @@ function createWindow() {
         log('作者入口位置=' + authorPos + ' 打开结果=' + JSON.stringify(authorOpen));
 
         const importBtn = await js("[...document.querySelectorAll('.toolbar-actions .btn')].some(x=>x.textContent.includes('导入 MOD'))");
+        // 导入引导弹窗：格式说明齐全、双入口；截图后关闭（不真开原生对话框）
+        await js("(()=>{[...document.querySelectorAll('.toolbar-actions .btn')].find(x=>x.textContent.includes('导入 MOD')).click();})()");
+        await new Promise((r) => setTimeout(r, 500));
+        const importGuide = await js('(()=>{const m=[...document.querySelectorAll(".modal-panel")].find(x=>x.textContent.includes("IMPORT"));' +
+          'return !!m && m.textContent.includes(".pak") && m.textContent.includes(".sig") && m.textContent.includes(".txt") && m.textContent.includes("解压") &&' +
+          '[...m.querySelectorAll(".modal-actions .btn")].some(b=>b.textContent.includes("选择文件夹")) &&' +
+          '[...m.querySelectorAll(".modal-actions .btn")].some(b=>b.textContent.includes(".pak 文件"));})()');
+        log('导入引导弹窗=' + importGuide);
+        await shot('pm7-extras-import-guide.png');
+        // 沙箱实测（PM_IMPORT_SRC）：导入 handler 读 env 不开原生对话框，真点双入口看结果面板
+        let importFlowOk = true;
+        if (process.env.PM_IMPORT_SRC) {
+          await js("(()=>{[...document.querySelectorAll('.modal-actions .btn')].find(x=>x.textContent.includes('选择文件夹')).click();})()");
+          await new Promise((r) => setTimeout(r, 1500));
+          const res1 = await js('(()=>{const r=document.querySelector(".import-result"); return r?r.textContent.replace(/\\s+/g," ").trim():"(无)";})()');
+          log('导入结果(文件夹)=' + res1);
+          await shot('pm7-extras-import-result.png');
+          await js("(()=>{[...document.querySelectorAll('.modal-actions .btn')].find(x=>x.textContent.includes('.pak 文件')).click();})()");
+          await new Promise((r) => setTimeout(r, 1500));
+          const res2 = await js('(()=>{const r=document.querySelector(".import-result"); return r?r.textContent.replace(/\\s+/g," ").trim():"(无)";})()');
+          log('导入结果(文件)=' + res2);
+          importFlowOk = res1.includes('新增 2') && res2.includes('合并 2');
+        }
+        await js("(()=>{[...document.querySelectorAll('.modal-actions .btn')].find(x=>x.textContent.includes('关闭')).click();})()");
+        await new Promise((r) => setTimeout(r, 400));
         const openGuard = await js('window.api.openPath("C:/pm7-no-such-dir-xyz")');
         const openEmpty = await js('window.api.openPath("")');
         log('打开目录守卫 不存在=' + JSON.stringify(openGuard) + ' 空路径=' + JSON.stringify(openEmpty));
@@ -1305,7 +1334,7 @@ function createWindow() {
         log('重新隐藏 页签=[' + relockTabs + '] 生效+库均无其他=' + otherGone);
         await shot('pm7-extras-relocked.png');
 
-        console.log(updOpen && updState && donateOk && importBtn && urlHidden && bad.ok === false &&
+        console.log(updOpen && updState && donateOk && importBtn && importGuide && importFlowOk && urlHidden && bad.ok === false &&
           authorPos && authorOpen.ok === true &&
           openGuard.ok === false && openEmpty.ok === false &&
           wiringOk && pageErr === 0 && refreshStable && (!hasLib || (hoverShot && pressShot && lbEnter)) && restartHint &&

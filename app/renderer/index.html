@@ -92,7 +92,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l13 8-13 8V4Z"/></svg>
             启动游戏
           </button>
-          <button class="btn" @click="importFolder()">
+          <button class="btn" @click="openImport()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
             导入 MOD
           </button>
@@ -117,7 +117,7 @@
         <div class="dir-tip">
           <div class="tip-head"><span class="mk"></span><span class="zh">指引</span><span class="en">GUIDE</span></div>
           MOD 库在软件目录的「皮肤」文件夹，把下载的 MOD（.pak，附同名 .sig / 预览图更佳）丢进去后点「刷新」；
-          或点「导入 MOD」选择下载好的文件夹批量入库（按内容自动去重、自动补预览图）。
+          或点「导入 MOD」选择文件夹或 .pak 文件批量入库（按内容自动去重、自动补预览图）。
           <b>不同槽位的 MOD 可同时生效</b>（如角色服装 + 武器外观）；启用同槽位 MOD（同一角色换装）会自动替换旧的。女1/女2/男1/男2 与拼音名（yqs 等）自动归入对应角色槽位（女1=月清疏、女2=白茉晴、男1=修吾、男2=桑游）。
           <span v-if="otherOn">去裙/果体等功能性 MOD 自动归入<b>「其他」</b>，启用时按作者约定装进 <b>~mods\Mods</b>；与同角色服装互斥，和武器可共存。</span>
         </div>
@@ -310,6 +310,33 @@
       <div class="modal-actions">
         <button class="btn btn-gold" @click="confirmUnlock()">确认开启</button>
         <button class="btn" @click="pwdOpen=false">取消</button>
+      </div>
+    </div>
+  </div>
+  </transition>
+
+  <!-- 导入 MOD 引导弹窗 -->
+  <transition name="modal">
+  <div class="modal-mask" v-if="importOpen" @click.self="importOpen=false">
+    <div class="modal-panel">
+      <i class="cn"></i><i class="cn"></i><i class="cn"></i><i class="cn"></i>
+      <h3 class="modal-title"><span class="mk"></span>导入 MOD<span class="ln"></span><span class="en">IMPORT</span></h3>
+      <p class="modal-line">支持以下格式（.sig / 预览图 / .txt 与 .pak 同名放一起）：</p>
+      <ul class="import-fmts">
+        <li><b>.pak</b><span>MOD 本体，必需。文件夹导入会递归查找；也可多选 .pak 文件。</span></li>
+        <li><b>.sig</b><span>签名，可选；缺失时启用会自动用游戏签名补齐。</span></li>
+        <li><b>预览图</b><span>可选：jpg / png / webp / bmp，任意文件名，自动归一为 pak 同名。</span></li>
+        <li><b>.txt</b><span>说明，可选；首行显示在卡片上（如「光腿」）。</span></li>
+      </ul>
+      <p class="modal-hint">按内容自动去重：重复的只合并预览 / 签名 / 说明；自动归类服装 / 武器 / 其他。压缩包（zip / rar 等）请先解压再导入。</p>
+      <div class="import-result" v-if="importResult">
+        新增 {{ importResult.added }} · 合并 {{ importResult.merged }}<span v-if="importResult.errors.length"> · 失败 {{ importResult.errors.length }}</span>
+        <div class="import-err" v-for="e in importResult.errors" :key="e">{{ e }}</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-gold" :disabled="importBusy" @click="runImport('folder')">选择文件夹…</button>
+        <button class="btn" :disabled="importBusy" @click="runImport('files')">选择 .pak 文件…</button>
+        <button class="btn" @click="importOpen=false">关闭</button>
       </div>
     </div>
   </div>
