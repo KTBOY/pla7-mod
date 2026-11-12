@@ -289,14 +289,14 @@ body {
 /* ===== 分段筛选（滑动金色指示器） ===== */
 .seg {
   position: relative;
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  width: 320px; max-width: 100%;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  width: 360px; max-width: 100%;
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(0,0,0,.25);
   margin-bottom: 16px;
 }
 .seg .pill {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 33.3333%;
+  position: absolute; top: 0; bottom: 0; left: 0; width: 25%;
   background: rgba(201,172,103,.16);
   border-bottom: 1.5px solid var(--gold);
   transform: translateX(calc(var(--i, 0) * 100%));
@@ -412,6 +412,7 @@ body {
   color: var(--cream-dim);
 }
 .tag-weapon { border-color: var(--gold-dim); color: var(--gold-bright); background: rgba(201,172,103,.1); }
+.tag-other { border-style: dashed; border-color: rgba(250,250,233,.35); color: var(--cream); }
 .tag-warn { border-color: rgba(255,107,94,.45); color: #ff9a8f; background: rgba(255,107,94,.08); }
 .card .meta {
   margin-top: auto;

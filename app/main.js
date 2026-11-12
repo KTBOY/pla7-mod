@@ -255,15 +255,23 @@ const CHAR_SLOTS = [
   { canon: '桑游', zh: /桑游|男2/, py: /^(sy$|sangyou)/ },
   { canon: '魁予', zh: /魁予/, py: /^(ky$|kuiyu)/ },
 ];
-function resolveRole(name, dirName) {
-  const hay = name + '_' + dirName;
-  const tokens = hay.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+function matchRole(text) {
+  if (!text) return '';
+  const tokens = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   for (const c of CHAR_SLOTS) {
-    if (c.zh.test(hay)) return c.canon;
+    if (c.zh.test(text)) return c.canon;
     if (tokens.some((t) => c.py.test(t))) return c.canon;
   }
   return '';
 }
+// pak 自身名优先于目录名：整合包目录可能同时提到多个角色（如 "BMQ and YQS nude mod"），
+// 只看目录会把 BaiMoQing_P 误判进目录里先匹配到的角色槽
+function resolveRole(name, dirName) {
+  return matchRole(name) || matchRole(dirName);
+}
+
+// 功能性 MOD 关键词：Remove*（去裙/去紧身衣等）、nude，及中文功能/裸体谐音（锅体=果体）
+const FUNC_MOD_RE = /nude|remove|功能|去裙|裸体|果体|锅体/i;
 
 // 从文件名启发式分类，并计算"槽位"：同槽位的 mod 互相覆盖（如同一角色的两套服装），
 // 不同槽位可以同时启用（如 女1服装 + 碧海剑武器）
@@ -275,6 +283,10 @@ function classify(name, dirName = '') {
     return { category: '武器', role: segs[wIdx + 1] || '', slot: '武器:' + (segs[wIdx + 1] || name) };
   }
   const role = resolveRole(name, dirName);
+  if (FUNC_MOD_RE.test(name + '_' + dirName)) {
+    // 功能性 MOD 归「其他」；改的仍是角色模型，能解析出角色就与该角色服装同槽互斥
+    return { category: '其他', role, slot: role ? '服装:' + role : '其他:' + name };
+  }
   return { category: '服装', role, slot: '服装:' + (role || name) };
 }
 
@@ -430,7 +442,10 @@ ipcMain.handle('install', async (_e, { mod, gameKey }) => {
   const cfg = loadConfig();
   const game = cfg.games[gameKey];
   if (!fs.existsSync(game.paksDir)) return { ok: false, msg: '游戏目录不存在，请在设置中修正' };
-  const dest = path.join(game.paksDir, '~mods');
+  // 功能性 MOD（其他）按作者约定装进 ~mods\Mods，其余装 ~mods（游戏递归扫描两处都会加载）
+  const dest = mod.category === '其他'
+    ? path.join(game.paksDir, '~mods', 'Mods')
+    : path.join(game.paksDir, '~mods');
   const slot = mod.slot || ('服装:' + mod.name);
   const { disabled, disabledNames } = await disableSameSlot(game.paksDir, cfg.libraryDir, slot);
   // 缺签名时，用游戏自带 dat*.sig 复制一份改名为 <mod名>.sig
@@ -769,6 +784,20 @@ async function runDedupSelfTest() {
     w(path.join(modsDir, '刀战学院_男1_服装1白色.pak'), 'PAK-NAN1');
     ds = await disableSameSlot(path.join(tmp, 'paks'), libDir, slotOf('月清疏_纱婉琅派.pak'));
     assert(ds.disabled === 0, '月清疏与男1共存（disabled=' + ds.disabled + '）');
+
+    // 8) 功能性 MOD 归「其他」：Remove*/nude 关键词；角色解析 pak 名优先于目录名
+    const cls = (n, d) => classify(n, d || '');
+    const nudeDir = '3dmmods_BMQ and YQS nude mod_id191096_fid215275';
+    assert(cls('RemoveSkirtMod.pak', 'YueQingshu_Mod2b_RemoveSkirt').category === '其他', 'RemoveSkirt 归其他');
+    assert(cls('RemoveSkirtMod.pak', 'YueQingshu_Mod2b_RemoveSkirt').role === '月清疏', 'RemoveSkirt 借目录名解析出月清疏');
+    assert(cls('BaiMoQing_P.pak', nudeDir).category === '其他', 'nude 目录关键词归其他');
+    assert(cls('BaiMoQing_P.pak', nudeDir).role === '白茉晴', 'BaiMoQing 自身名优先于目录里的 YQS');
+    assert(cls('YueQingShu_P.pak', nudeDir).role === '月清疏', 'YueQingShu 解析为月清疏');
+    assert(cls('BaiMoQing_P.pak', nudeDir).slot === slotOf('刀战学院_女2_服装1白色.pak'), '果体MOD与同角色服装同槽互斥');
+    assert(cls('YueQingShu_P.pak', nudeDir).slot === slotOf('RemoveSkirtMod.pak', 'YueQingshu_Mod2b_RemoveSkirt'), '同角色两个功能性MOD互斥');
+    assert(cls('SomeFunc.pak', '锅体').category === '其他', '锅体(果体谐音)目录归其他');
+    assert(cls('月清疏mod赵灵儿套.pak').category === '服装', '普通服装不受影响');
+    assert(cls('刀战学院_武器_碧海剑_赤红.pak').category === '武器', '武器分类不受影响');
 
     log('ALL-OK');
   } finally {
@@ -1125,10 +1154,21 @@ function createWindow() {
         // 回 MOD 页统计卡片：去重后应无同名重复、预览图齐全
         await js("(()=>{document.querySelectorAll('.nav-item')[0].click();})()");
         await new Promise((r) => setTimeout(r, 1500));
+        // 「其他」分类筛选：筛选栏四项齐全，点「其他」后卡片必须全部带其他标签
+        const segTabs = await js("[...document.querySelectorAll('.seg button')].map(b=>b.textContent.trim()).join(',')");
+        await js("(()=>{[...document.querySelectorAll('.seg button')].find(b=>b.textContent.trim()==='其他').click();})()");
+        await new Promise((r) => setTimeout(r, 400));
+        const otherStats = await js('(()=>{const cards=[...document.querySelectorAll(".section")[1].querySelectorAll(".card")];' +
+          'return {n:cards.length, allOther:cards.every(c=>[...c.querySelectorAll(".tag")].some(t=>t.textContent.trim()==="其他")),' +
+          'names:cards.map(c=>c.querySelector(".name").textContent.trim())};})()');
+        log('筛选栏=[' + segTabs + '] 其他页卡片=' + otherStats.n + ' 全部标其他=' + otherStats.allOther + ' ' + JSON.stringify(otherStats.names));
+        await shot('pm7-extras-other-filter.png');
+        await js("(()=>{[...document.querySelectorAll('.seg button')].find(b=>b.textContent.trim()==='全部').click();})()");
+        await new Promise((r) => setTimeout(r, 400));
         const stats = await js('(()=>{const cards=[...document.querySelectorAll(".section")[1].querySelectorAll(".card")];' +
           'const names=cards.map(c=>c.querySelector(".name").textContent.trim());' +
-          'return {total:cards.length, uniq:new Set(names).size, imgs:cards.filter(c=>c.querySelector(".preview img")).length};})()');
-        log('MOD库 卡片=' + stats.total + ' 去重后=' + stats.uniq + ' 有预览图=' + stats.imgs);
+          'return {total:cards.length, uniq:new Set(names).size, imgs:cards.filter(c=>c.querySelector(".preview img")).length, ph:cards.filter(c=>c.querySelector(".preview .ph")).length};})()');
+        log('MOD库 卡片=' + stats.total + ' 去重后=' + stats.uniq + ' 有预览图=' + stats.imgs + ' 无图占位=' + stats.ph);
         const restartHint = await js('(()=>{const s=document.querySelector(".section-title small"); return !!s && s.textContent.includes("重启游戏");})()');
         log('重启提示常驻=' + restartHint);
         await js("(()=>{const s=document.querySelector('.scroll'); s.scrollTop=s.scrollHeight;})()");
@@ -1140,7 +1180,8 @@ function createWindow() {
           openGuard.ok === false && openEmpty.ok === false &&
           wiringOk && pageErr === 0 && refreshStable && (!hasLib || (hoverShot && pressShot && lbEnter)) && restartHint &&
           (linkOpen === null || linkOpen.ok === true) &&
-          stats.total === stats.uniq && stats.imgs === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
+          segTabs === '全部,服装,武器,其他' && otherStats.allOther &&
+          stats.total === stats.uniq && stats.imgs + stats.ph === stats.total ? 'EXTRAS-OK' : 'EXTRAS-FAIL');
       } catch (e) { log('FAIL: ' + e.message); }
       app.quit();
     });

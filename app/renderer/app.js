@@ -31,7 +31,7 @@ const ModCard = defineComponent({
       <div class="body">
         <div class="name" :title="mod.name">{{ mod.name }}</div>
         <div class="tags">
-          <em class="tag" :class="mod.category === '武器' ? 'tag-weapon' : 'tag-skin'">{{ mod.category || '服装' }}</em>
+          <em class="tag" :class="mod.category === '武器' ? 'tag-weapon' : mod.category === '其他' ? 'tag-other' : 'tag-skin'">{{ mod.category || '服装' }}</em>
           <em class="tag" v-if="mod.role">{{ mod.role }}</em>
           <em class="tag tag-warn" v-if="!mod.sigPath" title="启用时会用游戏自带签名自动补一个">无签名</em>
         </div>
@@ -67,7 +67,7 @@ const app = createApp({
 
     const gameKeys = ['main', 'dlc'];
     const filter = ref('全部');
-    const filterIndex = computed(() => ['全部', '服装', '武器'].indexOf(filter.value));
+    const filterIndex = computed(() => ['全部', '服装', '武器', '其他'].indexOf(filter.value));
     const totalLibrary = computed(() => scanData.value
       ? scanData.value.games.main.library.length + scanData.value.games.dlc.library.length : 0);
     const totalInstalled = computed(() => scanData.value

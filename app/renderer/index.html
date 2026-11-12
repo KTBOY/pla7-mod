@@ -119,6 +119,7 @@
           MOD 库在软件目录的「皮肤」文件夹，把下载的 MOD（.pak，附同名 .sig / 预览图更佳）丢进去后点「刷新」；
           或点「导入 MOD」选择下载好的文件夹批量入库（按内容自动去重、自动补预览图）。
           <b>不同槽位的 MOD 可同时生效</b>（如角色服装 + 武器外观）；启用同槽位 MOD（同一角色换装）会自动替换旧的。女1/女2/男1/男2 与拼音名（yqs 等）自动归入对应角色槽位（女1=月清疏、女2=白茉晴、男1=修吾、男2=桑游）。
+          去裙/果体等功能性 MOD 自动归入<b>「其他」</b>，启用时按作者约定装进 <b>~mods\Mods</b>；与同角色服装互斥，和武器可共存。
         </div>
 
         <section class="section">
@@ -148,7 +149,7 @@
           </h2>
           <div class="seg" :style="{ '--i': filterIndex }">
             <span class="pill"></span>
-            <button v-for="c in ['全部','服装','武器']" :key="c"
+            <button v-for="c in ['全部','服装','武器','其他']" :key="c"
               :class="{active: filter===c}" @click="filter=c">{{ c }}</button>
           </div>
           <div class="grid" v-if="filteredLibrary(tab).length">
