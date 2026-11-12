@@ -205,7 +205,7 @@ function groupByHash(mods) {
     arr.sort((a, b) => (!!b.preview - !!a.preview) || (!!b.sigPath - !!a.sigPath) ||
       (depth(b) - depth(a)) || a.pakPath.localeCompare(b.pakPath));
     const rep = arr[0];
-    rep.copies = arr.slice(1).map((m) => ({ pakPath: m.pakPath, sigPath: m.sigPath, preview: m.preview }));
+    rep.copies = arr.slice(1).map((m) => ({ pakPath: m.pakPath, sigPath: m.sigPath, preview: m.preview, descPath: m.descPath }));
     out.push(rep);
   }
   out.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
@@ -231,6 +231,17 @@ async function buildMod(dir, pakPath) {
     }
   }
 
+  // 说明：同名 .txt 首行（如 RemoveSkirtMod.txt = 不要裙子），卡片上展示
+  let desc = null;
+  let descPath = null;
+  const txtPath = base + '.txt';
+  if (fs.existsSync(txtPath)) {
+    try {
+      const t = fs.readFileSync(txtPath, 'utf8').trim();
+      if (t) { desc = t.split(/\r?\n/)[0].trim(); descPath = txtPath; }
+    } catch {}
+  }
+
   const stat = await fsp.stat(pakPath);
   return {
     id: Buffer.from(pakPath).toString('base64url'),
@@ -238,6 +249,8 @@ async function buildMod(dir, pakPath) {
     pakPath,
     sigPath: fs.existsSync(sigPath) ? sigPath : null,
     preview,
+    desc,
+    descPath,
     sizeMB: +(stat.size / 1024 / 1024).toFixed(1),
     dir,
     hash: await hashPak(pakPath, stat),
@@ -334,6 +347,9 @@ async function transferMod(mod, destDir, move) {
   const previewDest = mod.preview
     ? path.join(destDir, path.basename(mod.pakPath, '.pak') + path.extname(mod.preview))
     : null;
+  const descDest = mod.descPath
+    ? path.join(destDir, path.basename(mod.pakPath, '.pak') + '.txt')
+    : null;
 
   if (move) {
     // 兜底去重：库里已存在同名 pak 时不再移回（否则同一 mod 会在库里出现两份、列表重复）
@@ -348,6 +364,7 @@ async function transferMod(mod, destDir, move) {
         await fsp.rename(mod.pakPath, path.join(bak, path.basename(mod.pakPath)));
         if (mod.sigPath && fs.existsSync(mod.sigPath)) await fsp.rename(mod.sigPath, path.join(bak, path.basename(mod.sigPath))).catch(() => {});
         if (mod.preview && fs.existsSync(mod.preview)) await fsp.rename(mod.preview, path.join(bak, path.basename(mod.preview))).catch(() => {});
+        if (mod.descPath && fs.existsSync(mod.descPath)) await fsp.rename(mod.descPath, path.join(bak, path.basename(mod.descPath))).catch(() => {});
         return path.basename(mod.pakPath);
       }
       // 同内容：直接删除 ~mods 里的副本；若库中那份缺签名而副本有，则顺手补上
@@ -355,7 +372,11 @@ async function transferMod(mod, destDir, move) {
       if (!fs.existsSync(dupSig) && mod.sigPath && fs.existsSync(mod.sigPath)) {
         await fsp.copyFile(mod.sigPath, dupSig).catch(() => {});
       }
-      for (const p of [mod.pakPath, mod.sigPath, mod.preview]) {
+      const dupTxt = dup.replace(/\.pak$/i, '') + '.txt';
+      if (!fs.existsSync(dupTxt) && mod.descPath && fs.existsSync(mod.descPath)) {
+        await fsp.copyFile(mod.descPath, dupTxt).catch(() => {});
+      }
+      for (const p of [mod.pakPath, mod.sigPath, mod.preview, mod.descPath]) {
         if (p && fs.existsSync(p)) await fsp.rm(p).catch(() => {});
       }
       return path.basename(dup);
@@ -363,10 +384,12 @@ async function transferMod(mod, destDir, move) {
     await fsp.rename(mod.pakPath, pakDest);
     if (mod.sigPath && fs.existsSync(mod.sigPath)) await fsp.rename(mod.sigPath, sigDest);
     if (mod.preview) await fsp.rename(mod.preview, previewDest).catch(() => {});
+    if (mod.descPath) await fsp.rename(mod.descPath, descDest).catch(() => {});
   } else {
     await fsp.copyFile(mod.pakPath, pakDest);
     if (mod.sigPath && fs.existsSync(mod.sigPath)) await fsp.copyFile(mod.sigPath, sigDest);
     if (mod.preview) await fsp.copyFile(mod.preview, previewDest).catch(() => {});
+    if (mod.descPath) await fsp.copyFile(mod.descPath, descDest).catch(() => {});
   }
   // 复制模式下预览图可能被 dest 里已有文件占用
   return path.basename(pakDest);
@@ -375,7 +398,7 @@ async function transferMod(mod, destDir, move) {
 // 停用/删除后连带清掉卡片背后隐藏的重复副本（同内容按哈希分组的其余成员）
 async function removeCopies(mod) {
   for (const c of mod.copies || []) {
-    for (const p of [c.pakPath, c.sigPath, c.preview]) {
+    for (const p of [c.pakPath, c.sigPath, c.preview, c.descPath]) {
       if (p && fs.existsSync(p)) await fsp.rm(p).catch(() => {});
     }
   }
@@ -474,7 +497,7 @@ ipcMain.handle('uninstall', async (_e, { mod }) => {
 async function deleteModFiles(mod, stops) {
   const dirs = new Set();
   for (const m of [mod, ...(mod.copies || [])]) {
-    for (const p of [m.pakPath, m.sigPath, m.preview]) {
+    for (const p of [m.pakPath, m.sigPath, m.preview, m.descPath]) {
       if (p && fs.existsSync(p)) await fsp.rm(p).catch(() => {});
     }
     if (m.pakPath) dirs.add(path.resolve(path.dirname(m.pakPath)));
@@ -798,6 +821,12 @@ async function runDedupSelfTest() {
     assert(cls('SomeFunc.pak', '锅体').category === '其他', '锅体(果体谐音)目录归其他');
     assert(cls('月清疏mod赵灵儿套.pak').category === '服装', '普通服装不受影响');
     assert(cls('刀战学院_武器_碧海剑_赤红.pak').category === '武器', '武器分类不受影响');
+
+    // 9) 说明侧车：同名 .txt 首行上卡片，其余行忽略
+    w(path.join(libDir, 'descmod', 'RemoveSkirtMod.pak'), 'PAK-DESC');
+    w(path.join(libDir, 'descmod', 'RemoveSkirtMod.txt'), '不要裙子\n第二行忽略');
+    const dm = (await scanMods(libDir)).find((m) => m.name === 'RemoveSkirtMod');
+    assert(dm && dm.desc === '不要裙子', '同名 txt 首行作为说明');
 
     log('ALL-OK');
   } finally {
@@ -1162,6 +1191,8 @@ function createWindow() {
           'return {n:cards.length, allOther:cards.every(c=>[...c.querySelectorAll(".tag")].some(t=>t.textContent.trim()==="其他")),' +
           'names:cards.map(c=>c.querySelector(".name").textContent.trim())};})()');
         log('筛选栏=[' + segTabs + '] 其他页卡片=' + otherStats.n + ' 全部标其他=' + otherStats.allOther + ' ' + JSON.stringify(otherStats.names));
+        const rsDesc = await js('(()=>{const c=[...document.querySelectorAll(".card")].find(x=>x.querySelector(".name").textContent.trim()==="RemoveSkirtMod"); return c?((c.querySelector(".desc")||{}).textContent||"(无)"):"(无卡片)";})()');
+        log('RemoveSkirtMod 说明=' + rsDesc);
         await shot('pm7-extras-other-filter.png');
         await js("(()=>{[...document.querySelectorAll('.seg button')].find(b=>b.textContent.trim()==='全部').click();})()");
         await new Promise((r) => setTimeout(r, 400));

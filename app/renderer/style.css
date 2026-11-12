@@ -403,6 +403,11 @@ body {
   word-break: break-all; color: var(--cream);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.card .desc {
+  margin: -2px 0 6px; font-size: 11px; line-height: 1.4;
+  color: var(--cream-dim); letter-spacing: .5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .tags { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .tag {
   font-style: normal; font-size: 10.5px; padding: 2px 7px;

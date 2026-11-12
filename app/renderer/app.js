@@ -30,6 +30,7 @@ const ModCard = defineComponent({
       </div>
       <div class="body">
         <div class="name" :title="mod.name">{{ mod.name }}</div>
+        <div class="desc" v-if="mod.desc" :title="mod.desc">{{ mod.desc }}</div>
         <div class="tags">
           <em class="tag" :class="mod.category === '武器' ? 'tag-weapon' : mod.category === '其他' ? 'tag-other' : 'tag-skin'">{{ mod.category || '服装' }}</em>
           <em class="tag" v-if="mod.role">{{ mod.role }}</em>
